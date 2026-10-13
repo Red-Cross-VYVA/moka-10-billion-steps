@@ -19,9 +19,18 @@ export default function SetPasswordPage() {
       const accessToken = params.get("access_token");
       const refreshToken = params.get("refresh_token");
       if (!accessToken || !refreshToken) {
-        setError(
-          "This invitation link is invalid or has expired. Request a new invitation.",
-        );
+        const {
+          data: { session },
+          error: sessionError,
+        } = await createClient().auth.getSession();
+        if (!active) return;
+        if (sessionError || !session) {
+          setError(
+            "This invitation link is invalid or has expired. Request a new invitation.",
+          );
+        } else {
+          setReady(true);
+        }
         return;
       }
       const { error: sessionError } = await createClient().auth.setSession({

@@ -5,7 +5,7 @@ Phase 1 UI foundation for the 10,000 Sites Activation ecosystem.
 ## Workspace
 
 - `apps/operations` — implemented Operations Dashboard (Next.js App Router)
-- `apps/driver-pwa` — reserved for the future Driver PWA
+- `apps/driver-pwa` — mobile-first Driver PWA for the end-to-end activation demo
 - `apps/scavenger-hunt` — reserved for the separate future platform
 - `packages/domain` — future shared package boundary
 - `supabase` — Phase 2 schema, RLS, private evidence storage, and local Supabase configuration
@@ -17,7 +17,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. Useful checks:
+The Operations Dashboard runs at `http://localhost:3000`. Start the Driver PWA separately with `npm run dev:driver`; it runs at `http://localhost:3001`. Useful checks:
 
 ```bash
 npm run typecheck

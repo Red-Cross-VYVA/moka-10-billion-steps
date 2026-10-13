@@ -8,9 +8,12 @@
   ],
   "scripts": {
     "dev": "npm run dev -w @moka/operations",
+    "dev:operations": "npm run dev -w @moka/operations",
+    "dev:driver": "npm run dev -w @moka/driver-pwa",
     "build": "npm run build -w @moka/operations",
+    "build:all": "npm run build -w @moka/operations && npm run build -w @moka/driver-pwa",
     "test": "npm run test -w @moka/operations",
-    "typecheck": "npm run typecheck -w @moka/operations",
+    "typecheck": "npm run typecheck -w @moka/operations && npm run typecheck -w @moka/driver-pwa",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset --local",

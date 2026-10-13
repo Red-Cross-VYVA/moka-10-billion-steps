@@ -42,8 +42,8 @@ export default function SetPasswordPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (password.length < 12) {
-      setError("Use at least 12 characters.");
+    if (password.length < 8) {
+      setError("Use at least 8 characters.");
       return;
     }
     if (password !== confirmation) {
@@ -83,7 +83,7 @@ export default function SetPasswordPage() {
               type="password"
               autoComplete="new-password"
               required
-              minLength={12}
+              minLength={8}
               disabled={!ready || busy}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -95,7 +95,7 @@ export default function SetPasswordPage() {
               type="password"
               autoComplete="new-password"
               required
-              minLength={12}
+              minLength={8}
               disabled={!ready || busy}
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}

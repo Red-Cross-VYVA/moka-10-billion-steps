@@ -16,7 +16,7 @@ The approved Supabase foundation is additive. Phase 1 mock workflows remain the 
 
 Copy `apps/operations/.env.example` to `apps/operations/.env.local` and populate the project URL and publishable key. Never commit `.env.local`. Keep the service-role value blank unless a reviewed server-only workflow needs it.
 
-The checked-in local Supabase configuration and hosted project both disable public sign-up and require passwords of at least 12 characters with upper/lowercase letters and digits. Hosted email confirmation remains enabled.
+The checked-in local Supabase configuration and hosted project both disable public sign-up and require passwords of at least 8 characters without composition rules. Hosted email confirmation remains enabled.
 
 ## First administrator
 

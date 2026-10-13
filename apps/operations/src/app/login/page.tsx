@@ -64,7 +64,7 @@ function LoginForm() {
               type="password"
               autoComplete="current-password"
               required
-              minLength={12}
+              minLength={8}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />

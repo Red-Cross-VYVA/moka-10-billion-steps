@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateSites } from "./fixtures";
-import { filterSites, kpis, validateImport } from "./metrics";
+import { applySiteFilters, filterSites, kpis } from "./metrics";
 
 describe("fixtures and metrics", () => {
   const sites = generateSites(10000);
@@ -17,8 +17,5 @@ describe("fixtures and metrics", () => {
     expect(filterSites(sites,"KSA-00001")).toHaveLength(1);
     expect(filterSites(sites,sites[0].merchant)).toContain(sites[0]);
   });
-  it("validates import headers", () => {
-    expect(validateImport(["site_id","merchant_name","region"])).toContain("longitude");
-    expect(validateImport(["site_id","merchant_name","region","city","category","latitude","longitude"])).toEqual([]);
-  });
+  it("applies combined filters without changing source counts", () => {const filtered=applySiteFilters(sites,{region:"Riyadh",status:"Verified",category:"Grocery"});expect(filtered.every(site=>site.region==="Riyadh"&&site.status==="Verified"&&site.category==="Grocery")).toBe(true);expect(kpis(sites).total).toBe(10000)});
 });

@@ -1,0 +1,12 @@
+{
+  "name": "moka-10-billion-steps",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @moka/operations",
+    "build": "npm run build -w @moka/operations",
+    "test": "npm run test -w @moka/operations",
+    "typecheck": "npm run typecheck -w @moka/operations"
+  }
+}

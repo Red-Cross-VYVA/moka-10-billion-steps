@@ -74,7 +74,7 @@ export default function SetPasswordPage() {
         <div>
           <span className="eyebrow">Invitation accepted</span>
           <h1>Create your password</h1>
-          <p>Choose a password for your invite-only administrator account.</p>
+          <p>Choose a password for your invite-only account.</p>
         </div>
         <form onSubmit={submit}>
           <label>

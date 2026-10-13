@@ -19,12 +19,16 @@ Both applications need the same `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPA
 4. Accept the email invitation and set a password that meets the hosted policy.
 5. Enable `NEXT_PUBLIC_SUPABASE_AUTH_REQUIRED=true` for the Operations development server and restart it.
 
+The local invite flow detects Supabase's invitation fragment and opens `/set-password`. The token is removed from the address bar as soon as the browser session is established.
+
 ## Demo driver account
 
 1. Replace the email on one fictional driver row with an inbox controlled by the tester.
 2. Send an invitation to that exact email from Supabase Authentication.
 3. The user-creation trigger links the invited identity to the matching driver record.
 4. Accept the invitation, then sign in at `http://localhost:3001/login`.
+
+The hosted development project must allow `http://localhost:3001/**` under Authentication → URL Configuration so driver invitations can return to the PWA.
 
 Never invent or share a password. The tester sets it through the invitation flow.
 

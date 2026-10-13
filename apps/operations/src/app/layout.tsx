@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { InviteRedirect } from "@/features/auth/InviteRedirect";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,6 +7,15 @@ export const metadata: Metadata = {
   description: "Moka Digiteck field activation operations dashboard",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en">
+      <body>
+        <InviteRedirect />
+        {children}
+      </body>
+    </html>
+  );
 }

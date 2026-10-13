@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { safeNext } from "@/lib/supabase/config";
@@ -11,6 +11,12 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    if (hash.get("type") === "invite" && hash.get("access_token")) {
+      window.location.replace(`/set-password${window.location.hash}`);
+    }
+  }, []);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);

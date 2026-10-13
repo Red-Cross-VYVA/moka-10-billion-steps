@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { InviteRedirect } from "@/features/InviteRedirect";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,7 +18,10 @@ export default function Layout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <InviteRedirect />
+        {children}
+      </body>
     </html>
   );
 }

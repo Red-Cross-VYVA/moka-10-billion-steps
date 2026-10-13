@@ -1,0 +1,2 @@
+-- Local-only seed hook. Production identities are intentionally not seeded.
+-- Create users through Supabase Auth, then add an approved organization_members row.

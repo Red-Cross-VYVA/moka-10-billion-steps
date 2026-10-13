@@ -8,6 +8,7 @@ Phase 1 UI foundation for the 10,000 Sites Activation ecosystem.
 - `apps/driver-pwa` — reserved for the future Driver PWA
 - `apps/scavenger-hunt` — reserved for the separate future platform
 - `packages/domain` — future shared package boundary
+- `supabase` — Phase 2 schema, RLS, private evidence storage, and local Supabase configuration
 
 ## Run locally
 
@@ -38,6 +39,8 @@ Set `NEXT_PUBLIC_MAP_STYLE_URL` to replace the default MapLibre-compatible tile 
 
 ## Preview safety
 
-This repository does not include application authentication. Use localhost or a hosting-provider preview protected by account access. Do not publish an unprotected public preview containing stakeholder material.
+Phase 1 did not include application authentication. Until Phase 2 authentication enforcement is enabled, use localhost or a hosting-provider preview protected by account access. Do not publish an unprotected public preview containing stakeholder material.
 
-This phase intentionally excludes authentication, payments, messaging delivery, AI vision, production cloud deployment, the Driver PWA, and Scavenger Hunt implementation. It is a functional UI prototype, not a production-ready system.
+Phase 1 intentionally excludes payments, messaging delivery, AI vision, production cloud deployment, the Driver PWA, and Scavenger Hunt implementation. It is a functional UI prototype, not a production-ready system.
+
+Phase 2 Supabase infrastructure is documented in `docs/phase2-supabase.md`. Authentication enforcement and the production data switch remain opt-in until the initial administrator is provisioned.

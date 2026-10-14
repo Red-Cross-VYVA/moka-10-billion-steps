@@ -167,6 +167,8 @@ additional_redirect_urls = [
   "http://localhost:3001/**",
   "http://127.0.0.1:3001/**",
   "https://10-billion-steps.vercel.app/**",
+  "https://drivers.10billionsteps.site/auth/callback",
+  "https://moka-10bs-ops-staging.vercel.app/auth/callback",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

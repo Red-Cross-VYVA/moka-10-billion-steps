@@ -1,6 +1,28 @@
 # Authentication email configuration
 
-Verified on 14 October 2026 for hosted project `cpyumnhbpbsdefjiqvtl`.
+## Magic-link sign-in for Operations and Driver
+
+Both `/login` screens offer **Email me a sign-in link** alongside password sign-in. Only existing invited accounts can sign in; the request explicitly disables automatic account creation. The existing organization roles, driver linkage, and database access policies still apply.
+
+The request sends the app's own `/auth/callback?next=...` as the return address. The callback exchanges the Supabase PKCE code for a cookie-backed session and returns to the requested internal page. Invalid or expired links return to sign-in with an explanation and keep the requested destination for a replacement link.
+
+Open the email link in the same browser that requested it. PKCE requires that browser's verification cookie; switching devices or opening an unrelated in-app email browser will not complete sign-in. Request a fresh link in the browser you want to use, or use the existing password option.
+
+The default hosted **Magic link or OTP** template already uses `{{ .ConfirmationURL }}` and does not need a template or SMTP change for this flow. The existing email-service limits still apply. The UI waits 60 seconds before allowing another successful request; Supabase also enforces its own limits.
+
+Before releasing, check the hosted Auth redirect allow list includes the callback on each intended app origin:
+
+- `https://drivers.10billionsteps.site/auth/callback`
+- `https://moka-10bs-ops-staging.vercel.app/auth/callback`
+- `https://10-billion-steps.vercel.app/auth/callback` when publishing to the existing Operations production URL
+
+Local callbacks use ports 3000 and 3001, already allowed by `supabase/config.toml`. Protected Vercel staging URLs still require Vercel account access before application sign-in. No email request, hosted configuration change, or production release is performed by the test suite.
+
+Release verification with an invited tester: request a link without filling a password, confirm email receipt, open it in the requesting browser, confirm the expected role and destination, and then verify that reusing or expiring the link shows the sign-in error. Repeat on the Driver app and Operations app. Local tests cover request restrictions and callback behavior with a mocked provider; they do not prove hosted email delivery.
+
+## Previously verified hosted setup
+
+The following records the setup verified on 14 October 2026 for hosted project `cpyumnhbpbsdefjiqvtl`.
 
 ## Repository templates
 

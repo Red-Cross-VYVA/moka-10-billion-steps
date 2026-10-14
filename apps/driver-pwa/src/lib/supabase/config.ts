@@ -8,10 +8,14 @@ export function getSupabaseConfig() {
 
 export const hasSupabaseConfig = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
 );
 export const isSupabaseAuthRequired =
   process.env.NEXT_PUBLIC_SUPABASE_AUTH_REQUIRED !== "false";
 export function safeNext(value: string | null) {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
+  return value?.startsWith("/") &&
+    !value.startsWith("//") &&
+    !/[\\\u0000-\u001f\u007f]/.test(value)
+    ? value
+    : "/";
 }

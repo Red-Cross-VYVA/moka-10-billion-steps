@@ -704,6 +704,17 @@ export function DriverApp() {
                 placeholder={tr("notesPlaceholder")}
               />
             </label>
+            <div className="issue-action">
+              <small>{tr("issueHint")}</small>
+              <button
+                className="unable"
+                onClick={reportIssue}
+                disabled={busy || !notes.trim()}
+              >
+                <AlertTriangle />
+                {tr("unable")}
+              </button>
+            </div>
             {error ? (
               <div className="message error">
                 <AlertTriangle />
@@ -730,10 +741,6 @@ export function DriverApp() {
             >
               <Upload />
               {busy ? tr("submitting") : tr("submit")}
-            </button>
-            <button className="unable" onClick={reportIssue} disabled={busy}>
-              <AlertTriangle />
-              {tr("unable")}
             </button>
           </div>
         </section>

@@ -478,6 +478,14 @@ button {
   min-height: 86px;
   resize: vertical;
 }
+.issue-action {
+  display: grid;
+  gap: 8px;
+  margin-top: -4px;
+}
+.issue-action small {
+  color: var(--muted);
+}
 .message {
   display: flex;
   align-items: flex-start;
@@ -514,6 +522,10 @@ button {
   border-radius: 12px;
   padding: 13px;
   font-weight: 800;
+}
+.unable:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 .empty {
   padding: 40px 20px;

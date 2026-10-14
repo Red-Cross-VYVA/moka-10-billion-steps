@@ -54,7 +54,8 @@ const en = {
   notesPlaceholder: "Optional notes, or explain why installation was not possible",
   submit: "Submit evidence",
   submitting: "Submitting…",
-  unable: "Unable to install",
+  unable: "Report installation issue",
+  issueHint: "Can’t install? Add a note, then report it.",
   loading: "Loading assignments",
 };
 
@@ -112,7 +113,8 @@ const ar: Record<keyof typeof en, string> = {
   notesPlaceholder: "ملاحظات اختيارية، أو اشرح سبب تعذر التركيب",
   submit: "إرسال الأدلة",
   submitting: "جارٍ الإرسال…",
-  unable: "تعذر التركيب",
+  unable: "الإبلاغ عن مشكلة في التركيب",
+  issueHint: "تعذر التركيب؟ أضف ملاحظة ثم أرسل البلاغ.",
   loading: "جارٍ تحميل المهمات",
 };
 

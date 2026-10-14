@@ -14,6 +14,7 @@
     "build:all": "npm run build -w @moka/operations && npm run build -w @moka/driver-pwa",
     "test": "npm run test -w @moka/operations",
     "typecheck": "npm run typecheck -w @moka/operations && npm run typecheck -w @moka/driver-pwa",
+    "validate:auth-emails": "node supabase/templates/auth/validate.mjs",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset --local",

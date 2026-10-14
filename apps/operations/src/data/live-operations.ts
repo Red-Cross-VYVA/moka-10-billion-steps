@@ -1,5 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Driver, Site, SiteDraft, SiteStatus } from "@/domain/model";
+import type {
+  Driver,
+  OperationsAccess,
+  Site,
+  SiteDraft,
+  SiteStatus,
+} from "@/domain/model";
+import type {
+  AssessmentCriterion,
+  AssessmentResult,
+  AssessmentStatus,
+} from "@/domain/evidence-assessment";
 
 const siteStatuses: Record<string, SiteStatus> = {
   unassigned: "Unassigned",
@@ -36,6 +47,22 @@ type AttemptRow = {
   gps_proximity_metres: number | null;
   evidence_files: EvidenceRow[] | null;
 };
+type AssessmentRow = {
+  id: string;
+  attempt_id: string;
+  status: AssessmentStatus;
+  result: AssessmentResult | null;
+  confidence: number | null;
+  criteria: AssessmentCriterion[] | null;
+  reasons: string[] | null;
+  provider: string | null;
+  model: string | null;
+  rule_version: string;
+  run_number: number;
+  created_at: string;
+  completed_at: string | null;
+  error_code: string | null;
+};
 type ExceptionRow = {
   id: string;
   reason: string;
@@ -64,9 +91,11 @@ function relationName(value: Relation) {
 }
 
 export async function loadLiveOperations(client: SupabaseClient) {
+  const { data: userData } = await client.auth.getUser();
   const [
     { data: driverRows, error: driverError },
     { data: siteRows, error: siteError },
+    { data: membership },
   ] = await Promise.all([
     client
       .from("drivers")
@@ -86,9 +115,26 @@ export async function loadLiveOperations(client: SupabaseClient) {
     `,
       )
       .order("site_code"),
+    userData.user
+      ? client
+          .from("organization_members")
+          .select("organization_id,role")
+          .eq("user_id", userData.user.id)
+          .eq("active", true)
+          .in("role", ["admin", "operator", "reviewer"])
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
   if (driverError) throw driverError;
   if (siteError) throw siteError;
+
+  let assessmentRows: AssessmentRow[] = [];
+  const { data: assessmentData, error: assessmentError } = await client
+    .from("evidence_assessments")
+    .select("id,attempt_id,status,result,confidence,criteria,reasons,provider,model,rule_version,run_number,created_at,completed_at,error_code")
+    .order("run_number", { ascending: false });
+  if (!assessmentError) assessmentRows = (assessmentData ?? []) as AssessmentRow[];
 
   const drivers: Driver[] = (driverRows ?? []).map((row) => ({
     id: row.id,
@@ -145,6 +191,25 @@ export async function loadLiveOperations(client: SupabaseClient) {
           : "Not started",
         gpsProximityMetres: attempts[0]?.gps_proximity_metres ?? undefined,
         fieldNotes: attempts[0]?.notes?.trim() || undefined,
+        assessments: assessmentRows
+          .filter((assessment) => assessment.attempt_id === attempts[0]?.id)
+          .map((assessment) => ({
+            id: assessment.id,
+            attemptId: assessment.attempt_id,
+            status: assessment.status,
+            result: assessment.result ?? undefined,
+            confidence: assessment.confidence ?? undefined,
+            criteria: assessment.criteria ?? [],
+            reasons: assessment.reasons ?? [],
+            provider: assessment.provider ?? undefined,
+            model: assessment.model ?? undefined,
+            ruleVersion: assessment.rule_version,
+            runNumber: assessment.run_number,
+            requestedAt: assessment.created_at,
+            completedAt: assessment.completed_at ?? undefined,
+            errorCode: assessment.error_code ?? undefined,
+          }))
+          .sort((a, b) => b.runNumber - a.runNumber),
         exceptionStatus: currentException
           ? exceptionStatuses[currentException.status]
           : undefined,
@@ -177,7 +242,76 @@ export async function loadLiveOperations(client: SupabaseClient) {
       };
     }),
   );
-  return { sites, drivers };
+  let access: OperationsAccess = {
+    role: membership?.role as OperationsAccess["role"],
+  };
+  if (membership?.organization_id) {
+    const { data: settings } = await client
+      .from("evidence_assessment_settings")
+      .select("*")
+      .eq("organization_id", membership.organization_id)
+      .maybeSingle();
+    if (settings) {
+      access = {
+        ...access,
+        assessmentSettings: {
+          organizationId: settings.organization_id,
+          enabled: settings.enabled,
+          rolloutMode: settings.rollout_mode,
+          gpsThresholdMetres: settings.gps_threshold_metres,
+          futureToleranceMinutes: settings.future_tolerance_minutes,
+          captureUploadWarningMinutes: settings.capture_upload_warning_minutes,
+          minImageWidth: settings.min_image_width,
+          minImageHeight: settings.min_image_height,
+          passConfidence: Number(settings.pass_confidence),
+          issueConfidence: Number(settings.issue_confidence),
+          ruleVersion: settings.rule_version,
+        },
+      };
+    }
+  }
+  return { sites, drivers, access };
+}
+
+export async function retryLiveAssessment(
+  client: SupabaseClient,
+  attemptId: string,
+) {
+  const { data: assessmentId, error } = await client.rpc(
+    "retry_evidence_assessment",
+    { p_attempt_id: attemptId },
+  );
+  if (error) throw error;
+  const { error: invokeError } = await client.functions.invoke(
+    "assess-evidence",
+    { body: { assessmentId } },
+  );
+  if (invokeError) {
+    // The durable queue remains available to the scheduled worker.
+    return { assessmentId, queued: true };
+  }
+  return { assessmentId, queued: true };
+}
+
+export async function updateLiveAssessmentSettings(
+  client: SupabaseClient,
+  settings: NonNullable<OperationsAccess["assessmentSettings"]>,
+) {
+  const { error } = await client
+    .from("evidence_assessment_settings")
+    .update({
+      enabled: settings.enabled,
+      rollout_mode: settings.rolloutMode,
+      gps_threshold_metres: settings.gpsThresholdMetres,
+      future_tolerance_minutes: settings.futureToleranceMinutes,
+      capture_upload_warning_minutes: settings.captureUploadWarningMinutes,
+      min_image_width: settings.minImageWidth,
+      min_image_height: settings.minImageHeight,
+      pass_confidence: settings.passConfidence,
+      issue_confidence: settings.issueConfidence,
+    })
+    .eq("organization_id", settings.organizationId);
+  if (error) throw error;
 }
 
 export async function assignLiveSites(

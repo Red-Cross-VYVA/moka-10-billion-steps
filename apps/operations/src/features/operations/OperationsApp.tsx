@@ -62,11 +62,20 @@ import {
   workloadForDriver,
   type Driver,
   type Notification,
+  type OperationsAccess,
   type Site,
   type SiteDraft,
   type SiteDraftErrors,
   type SiteStatus,
 } from "@/domain/model";
+import {
+  assessmentResultLabel,
+  assessmentStatusLabel,
+  latestAssessment,
+  type AssessmentResult,
+  type AssessmentStatus,
+  type EvidenceAssessmentSettings,
+} from "@/domain/evidence-assessment";
 import {
   importFields,
   parseCsv,
@@ -84,7 +93,9 @@ import {
   createLiveSite,
   decideLiveReview,
   loadLiveOperations,
+  retryLiveAssessment,
   resolveLiveException,
+  updateLiveAssessmentSettings,
   updateLiveDriver,
 } from "@/data/live-operations";
 
@@ -160,6 +171,7 @@ export function OperationsApp() {
   const [mobileNav, setMobileNav] = useState(false);
   const [liveLoading, setLiveLoading] = useState(liveMode);
   const [liveError, setLiveError] = useState<string>();
+  const [access, setAccess] = useState<OperationsAccess>({});
   const [language, setLanguage] = useState<Language>("en");
   const rtl = language === "ar";
   const [hydrated, setHydrated] = useState(false);
@@ -170,6 +182,7 @@ export function OperationsApp() {
       const snapshot = await loadLiveOperations(supabase);
       setSites(snapshot.sites);
       setDrivers(snapshot.drivers);
+      setAccess(snapshot.access);
     } catch (error) {
       setLiveError(
         error instanceof Error ? error.message : "Unable to load hosted data",
@@ -498,6 +511,7 @@ export function OperationsApp() {
               <Reviews
                 sites={sites}
                 drivers={drivers}
+                access={access}
                 action={async (id, to, detail) => {
                   try {
                     await reviewSite(id, to, detail);
@@ -506,6 +520,26 @@ export function OperationsApp() {
                     notify(
                       error instanceof Error ? error.message : "Review failed",
                     );
+                  }
+                }}
+                retryAssessment={async (attemptId) => {
+                  try {
+                    if (!supabase) throw new Error("AI assessment requires hosted mode.");
+                    await retryLiveAssessment(supabase, attemptId);
+                    await refreshLive();
+                    notify("Assessment queued");
+                  } catch (error) {
+                    notify(error instanceof Error ? error.message : "Unable to queue assessment");
+                  }
+                }}
+                saveAssessmentSettings={async (settings) => {
+                  try {
+                    if (!supabase) throw new Error("Settings require hosted mode.");
+                    await updateLiveAssessmentSettings(supabase, settings);
+                    await refreshLive();
+                    notify("Assessment criteria updated");
+                  } catch (error) {
+                    notify(error instanceof Error ? error.message : "Unable to update criteria");
                   }
                 }}
                 onSelect={setSelected}
@@ -1889,30 +1923,97 @@ const declineReasons = [
 function Reviews({
   sites,
   drivers,
+  access,
   action,
+  retryAssessment,
+  saveAssessmentSettings,
   onSelect,
 }: {
   sites: Site[];
   drivers: Driver[];
+  access: OperationsAccess;
   action: (
     id: string,
     to: "Verified" | "Revisit Required" | "Flagged / Exception",
     detail: string,
   ) => void | Promise<void>;
+  retryAssessment: (attemptId: string) => Promise<void>;
+  saveAssessmentSettings: (
+    settings: EvidenceAssessmentSettings,
+  ) => Promise<void>;
   onSelect: (s: Site) => void;
 }) {
+  const language = useContext(LanguageContext);
+  const copy = language === "ar"
+    ? {
+        assessment: "التقييم بمساعدة الذكاء الاصطناعي",
+        reviewerRequired: "قرار المراجع مطلوب",
+        allResults: "كل نتائج التقييم",
+        allStates: "كل حالات المعالجة",
+        allCriteria: "كل المعايير",
+        settings: "معايير التقييم",
+        retry: "إعادة التحليل",
+        notAssessed: "لم يتم التقييم بعد",
+        queued: "تمت إضافة التقييم إلى قائمة الانتظار.",
+        confidence: "الثقة",
+        model: "النموذج",
+        evaluated: "وقت التقييم",
+        shadow: "الوضع التجريبي: لا يغيّر التقييم ترتيب القائمة أو قرار المراجع.",
+        riskSort: "ترتيب حسب المخاطر",
+      }
+    : {
+        assessment: "AI-assisted assessment",
+        reviewerRequired: "Reviewer decision required",
+        allResults: "All assessment results",
+        allStates: "All processing states",
+        allCriteria: "All criteria",
+        settings: "Assessment criteria",
+        retry: "Retry analysis",
+        notAssessed: "Not assessed yet",
+        queued: "Assessment has been queued.",
+        confidence: "Confidence",
+        model: "Model",
+        evaluated: "Evaluated",
+        shadow: "Shadow mode: assessment does not change queue order or reviewer decisions.",
+        riskSort: "Sort by risk",
+      };
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState("");
   const [driverId, setDriverId] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [assessmentResult, setAssessmentResult] = useState("");
+  const [assessmentStatus, setAssessmentStatus] = useState("");
+  const [criterion, setCriterion] = useState("");
+  const [riskSort, setRiskSort] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState(
+    access.assessmentSettings,
+  );
+  const [assessmentBusy, setAssessmentBusy] = useState(false);
   const allReviews = sites.filter((s) => s.status === "Under Review");
   const reviewRegions = [...new Set(allReviews.map((s) => s.region))].sort();
   const reviewDrivers = drivers.filter((driver) =>
     allReviews.some((site) => site.driverId === driver.id),
   );
+  const criterionOptions = Array.from(
+    new Map(
+      allReviews.flatMap((site) =>
+        (latestAssessment(site.assessments ?? [])?.criteria ?? []).map((item) => [
+          item.key,
+          item.label,
+        ]),
+      ),
+    ),
+  );
+  const riskRank: Record<string, number> = {
+    likely_issue: 0,
+    needs_review: 1,
+    meets_criteria: 2,
+  };
   const queue = allReviews.filter((site) => {
     const submittedAt = site.visitAttempts[0]?.submittedAt ?? site.updatedAt;
+    const assessment = latestAssessment(site.assessments ?? []);
     const submittedDate = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Riyadh",
       year: "numeric",
@@ -1927,10 +2028,27 @@ function Reviews({
       (!region || site.region === region) &&
       (!driverId || site.driverId === driverId) &&
       (!dateFrom || submittedDate >= dateFrom) &&
-      (!dateTo || submittedDate <= dateTo)
+      (!dateTo || submittedDate <= dateTo) &&
+      (!assessmentResult || assessment?.result === assessmentResult) &&
+      (!assessmentStatus || assessment?.status === assessmentStatus) &&
+      (!criterion ||
+        assessment?.criteria.some(
+          (item) => item.key === criterion && item.outcome !== "pass",
+        ))
     );
+  }).sort((a, b) => {
+    if (!riskSort || access.assessmentSettings?.rolloutMode !== "active") return 0;
+    const left = latestAssessment(a.assessments ?? [])?.result ?? "needs_review";
+    const right = latestAssessment(b.assessments ?? [])?.result ?? "needs_review";
+    return riskRank[left] - riskRank[right];
   });
-  const [active, setActive] = useState(queue[0]);
+  const [activeId, setActiveId] = useState(queue[0]?.id);
+  const active = queue.find((site) => site.id === activeId) ?? queue[0];
+  const activeAssessment = active
+    ? latestAssessment(active.assessments ?? [])
+    : undefined;
+  const queueIds = queue.map((site) => site.id).join("|");
+  const firstQueueId = queue[0]?.id;
   const [reason, setReason] = useState(declineReasons[0]);
   const clearFilters = () => {
     setQuery("");
@@ -1938,6 +2056,10 @@ function Reviews({
     setDriverId("");
     setDateFrom("");
     setDateTo("");
+    setAssessmentResult("");
+    setAssessmentStatus("");
+    setCriterion("");
+    setRiskSort(false);
   };
   const filters = (
     <div className="panel review-filters" aria-label="Review queue filters">
@@ -1967,15 +2089,57 @@ function Reviews({
         <span>To</span>
         <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
       </label>
+      <select
+        value={assessmentResult}
+        onChange={(event) => setAssessmentResult(event.target.value)}
+        aria-label={copy.allResults}
+      >
+        <option value="">{copy.allResults}</option>
+        <option value="meets_criteria">Meets criteria</option>
+        <option value="needs_review">Needs review</option>
+        <option value="likely_issue">Likely issue</option>
+      </select>
+      <select
+        value={assessmentStatus}
+        onChange={(event) => setAssessmentStatus(event.target.value)}
+        aria-label={copy.allStates}
+      >
+        <option value="">{copy.allStates}</option>
+        {(["queued", "processing", "completed", "failed"] as AssessmentStatus[]).map((item) => (
+          <option key={item} value={item}>{assessmentStatusLabel(item)}</option>
+        ))}
+      </select>
+      <select
+        value={criterion}
+        onChange={(event) => setCriterion(event.target.value)}
+        aria-label={copy.allCriteria}
+      >
+        <option value="">{copy.allCriteria}</option>
+        {criterionOptions.map(([key, label]) => (
+          <option key={key} value={key}>{label}</option>
+        ))}
+      </select>
+      <label className="risk-sort" title={access.assessmentSettings?.rolloutMode === "shadow" ? copy.shadow : undefined}>
+        <input
+          type="checkbox"
+          checked={riskSort}
+          disabled={access.assessmentSettings?.rolloutMode !== "active"}
+          onChange={(event) => setRiskSort(event.target.checked)}
+        />
+        {copy.riskSort}
+      </label>
       <span className="result-count">{fmt.format(queue.length)} results</span>
-      <button className="button secondary" onClick={clearFilters} disabled={!query && !region && !driverId && !dateFrom && !dateTo}>
+      <button className="button secondary" onClick={clearFilters} disabled={!query && !region && !driverId && !dateFrom && !dateTo && !assessmentResult && !assessmentStatus && !criterion && !riskSort}>
         <X /> Clear
       </button>
     </div>
   );
   useEffect(() => {
-    if (!active || !queue.some((s) => s.id === active.id)) setActive(queue[0]);
-  }, [queue, active]);
+    if (!activeId || !queueIds.split("|").includes(activeId)) setActiveId(firstQueueId);
+  }, [activeId, firstQueueId, queueIds]);
+  useEffect(() => {
+    setSettingsDraft(access.assessmentSettings);
+  }, [access.assessmentSettings]);
   if (!active)
     return (
       <>
@@ -1995,6 +2159,11 @@ function Reviews({
       <PageIntro
         title="Review queue"
         text={`${fmt.format(queue.length)} of ${fmt.format(allReviews.length)} submissions shown.`}
+        actions={access.assessmentSettings ? (
+          <button className="button secondary" onClick={() => setSettingsOpen(true)}>
+            <Gauge /> {copy.settings}
+          </button>
+        ) : undefined}
       />
       {filters}
       <div className="review-layout">
@@ -2003,7 +2172,7 @@ function Reviews({
             <button
               className={active.id === s.id ? "active" : ""}
               key={s.id}
-              onClick={() => setActive(s)}
+              onClick={() => setActiveId(s.id)}
             >
               <span className="review-thumb">
                 <MapPin />
@@ -2022,6 +2191,11 @@ function Reviews({
                     minute: "2-digit",
                   })}
                 </em>
+                <span className={`assessment-pill ${latestAssessment(s.assessments ?? [])?.result ?? "pending"}`}>
+                  {latestAssessment(s.assessments ?? [])?.status === "completed"
+                    ? assessmentResultLabel(latestAssessment(s.assessments ?? [])?.result)
+                    : assessmentStatusLabel(latestAssessment(s.assessments ?? [])?.status)}
+                </span>
               </span>
               <ChevronRight />
             </button>
@@ -2116,10 +2290,10 @@ function Reviews({
             <div>
               <Sparkles />
               <span>
-                <small>Simulated AI check</small>
-                <b>Needs human review</b>
+                <small>{copy.assessment}</small>
+                <b>{activeAssessment?.status === "completed" ? assessmentResultLabel(activeAssessment.result) : assessmentStatusLabel(activeAssessment?.status)}</b>
               </span>
-              <em>DEMO ONLY</em>
+              <em>{copy.reviewerRequired}</em>
             </div>
             <div>
               <RefreshCw />
@@ -2130,6 +2304,55 @@ function Reviews({
               <button onClick={() => onSelect(active)}>View history</button>
             </div>
           </div>
+          <section className={`assessment-card ${activeAssessment?.result ?? "pending"}`} aria-label={copy.assessment}>
+            <div className="assessment-card-head">
+              <div>
+                <span className="eyebrow">{copy.assessment}</span>
+                <h3>{activeAssessment?.status === "completed" ? assessmentResultLabel(activeAssessment.result) : assessmentStatusLabel(activeAssessment?.status)}</h3>
+                <p>{access.assessmentSettings?.rolloutMode === "shadow" ? copy.shadow : copy.reviewerRequired}</p>
+              </div>
+              {activeAssessment && !["queued", "processing"].includes(activeAssessment.status) && active.visitAttempts[0]?.id ? (
+                <button
+                  className="button secondary"
+                  disabled={assessmentBusy}
+                  onClick={async () => {
+                    setAssessmentBusy(true);
+                    try { await retryAssessment(active.visitAttempts[0].id); }
+                    finally { setAssessmentBusy(false); }
+                  }}
+                >
+                  <RefreshCw className={assessmentBusy ? "spin" : ""} /> {copy.retry}
+                </button>
+              ) : null}
+            </div>
+            {activeAssessment?.criteria.length ? (
+              <div className="assessment-checklist">
+                {activeAssessment.criteria.map((item) => (
+                  <div key={item.key} className={item.outcome}>
+                    {item.outcome === "pass" ? <Check /> : item.outcome === "fail" ? <AlertTriangle /> : <CircleAlert />}
+                    <span>
+                      <b>{item.label}</b>
+                      <small>{item.detail}</small>
+                    </span>
+                    <em>{item.outcome}{item.confidence == null ? "" : ` · ${Math.round(item.confidence * 100)}%`}</em>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="assessment-empty">
+                <Sparkles />
+                <span>{activeAssessment?.status === "queued" ? copy.queued : copy.notAssessed}</span>
+              </div>
+            )}
+            {activeAssessment ? (
+              <div className="assessment-meta">
+                <span>{copy.confidence}: {activeAssessment.confidence == null ? "—" : `${Math.round(activeAssessment.confidence * 100)}%`}</span>
+                <span>{copy.model}: {activeAssessment.model ?? "—"}</span>
+                <span>{copy.evaluated}: {activeAssessment.completedAt ? new Date(activeAssessment.completedAt).toLocaleString("en-GB", { timeZone: "Asia/Riyadh" }) : "—"}</span>
+                <span>Run {activeAssessment.runNumber} · rules {activeAssessment.ruleVersion}</span>
+              </div>
+            ) : null}
+          </section>
           <div className="driver-note">
             <span className="eyebrow">Driver note</span>
             <p>{active.fieldNotes || "No field note was submitted."}</p>
@@ -2179,6 +2402,60 @@ function Reviews({
           </div>
         </div>
       </div>
+      {settingsOpen && settingsDraft ? (
+        <Modal
+          title={copy.settings}
+          subtitle={access.role === "admin" ? "Organization-wide advisory thresholds." : "Read-only for your Operations role."}
+          close={() => setSettingsOpen(false)}
+        >
+          <div className="assessment-settings form-grid">
+            <label>
+              GPS threshold (metres)
+              <input type="number" min="10" max="5000" value={settingsDraft.gpsThresholdMetres} disabled={access.role !== "admin"} onChange={(event) => setSettingsDraft({ ...settingsDraft, gpsThresholdMetres: Number(event.target.value) })} />
+            </label>
+            <label>
+              Capture/upload warning (minutes)
+              <input type="number" min="1" max="10080" value={settingsDraft.captureUploadWarningMinutes} disabled={access.role !== "admin"} onChange={(event) => setSettingsDraft({ ...settingsDraft, captureUploadWarningMinutes: Number(event.target.value) })} />
+            </label>
+            <label>
+              Minimum image width
+              <input type="number" min="320" max="12000" value={settingsDraft.minImageWidth} disabled={access.role !== "admin"} onChange={(event) => setSettingsDraft({ ...settingsDraft, minImageWidth: Number(event.target.value) })} />
+            </label>
+            <label>
+              Minimum image height
+              <input type="number" min="320" max="12000" value={settingsDraft.minImageHeight} disabled={access.role !== "admin"} onChange={(event) => setSettingsDraft({ ...settingsDraft, minImageHeight: Number(event.target.value) })} />
+            </label>
+            <label>
+              Pass confidence
+              <input type="number" min="0" max="1" step="0.01" value={settingsDraft.passConfidence} disabled={access.role !== "admin"} onChange={(event) => setSettingsDraft({ ...settingsDraft, passConfidence: Number(event.target.value) })} />
+            </label>
+            <label>
+              Issue confidence
+              <input type="number" min="0" max="1" step="0.01" value={settingsDraft.issueConfidence} disabled={access.role !== "admin"} onChange={(event) => setSettingsDraft({ ...settingsDraft, issueConfidence: Number(event.target.value) })} />
+            </label>
+            <label>
+              Rollout mode
+              <select value={settingsDraft.rolloutMode} disabled={access.role !== "admin"} onChange={(event) => setSettingsDraft({ ...settingsDraft, rolloutMode: event.target.value as "shadow" | "active" })}>
+                <option value="shadow">Shadow</option>
+                <option value="active">Active filters</option>
+              </select>
+            </label>
+            <label className="settings-toggle">
+              <input type="checkbox" checked={settingsDraft.enabled} disabled={access.role !== "admin"} onChange={(event) => setSettingsDraft({ ...settingsDraft, enabled: event.target.checked })} />
+              Assessment enabled
+            </label>
+            <p className="config-note span2">AI results are advisory. Settings never authorize automatic approval or rejection.</p>
+            <div className="modal-actions span2">
+              <button className="button secondary" onClick={() => setSettingsOpen(false)}>Close</button>
+              {access.role === "admin" ? (
+                <button className="button primary" onClick={async () => { await saveAssessmentSettings(settingsDraft); setSettingsOpen(false); }}>
+                  Save criteria
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </Modal>
+      ) : null}
     </>
   );
 }

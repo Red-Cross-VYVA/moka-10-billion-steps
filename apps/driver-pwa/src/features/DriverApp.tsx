@@ -395,6 +395,13 @@ export function DriverApp() {
           size_bytes: photo.stamped.size,
           checksum_sha256: stampedChecksum,
           uploaded_by: userId,
+          evidence_uid: photo.evidenceUid,
+          variant: "stamped",
+          capture_timestamp: photo.capturedAt,
+          capture_time_source: "application_server",
+          stamp_language: photo.language ?? language,
+          captured_latitude: photo.latitude,
+          captured_longitude: photo.longitude,
         },
         {
           id: originalRecordId,
@@ -408,6 +415,13 @@ export function DriverApp() {
           size_bytes: photo.original.size,
           checksum_sha256: originalChecksum,
           uploaded_by: userId,
+          evidence_uid: photo.evidenceUid,
+          variant: "original",
+          capture_timestamp: photo.capturedAt,
+          capture_time_source: "application_server",
+          stamp_language: photo.language ?? language,
+          captured_latitude: photo.latitude,
+          captured_longitude: photo.longitude,
         },
       ]);
     if (metadataError) throw metadataError;

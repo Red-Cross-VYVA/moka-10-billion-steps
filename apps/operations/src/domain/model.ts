@@ -1,3 +1,8 @@
+import type {
+  EvidenceAssessment,
+  EvidenceAssessmentSettings,
+} from "./evidence-assessment";
+
 export const SITE_STATUSES = [
   "Unassigned",
   "Assigned",
@@ -64,6 +69,7 @@ export interface Site {
   evidence?: SiteEvidence[];
   gpsProximityMetres?: number;
   fieldNotes?: string;
+  assessments?: EvidenceAssessment[];
 }
 export interface Driver {
   id: string;
@@ -82,6 +88,11 @@ export interface Notification {
   detail: string;
   at: string;
   read: boolean;
+}
+
+export interface OperationsAccess {
+  role?: "admin" | "operator" | "reviewer";
+  assessmentSettings?: EvidenceAssessmentSettings;
 }
 
 export const allowedTransitions: Record<SiteStatus, readonly SiteStatus[]> = {

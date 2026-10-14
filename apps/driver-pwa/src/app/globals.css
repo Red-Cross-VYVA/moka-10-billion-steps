@@ -133,6 +133,29 @@ button {
 .error {
   color: var(--red);
 }
+.login p.error {
+  color: var(--red);
+}
+.login .login-alternative {
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--navy);
+}
+.login button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.login-success {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #a9cdbd;
+  border-radius: 12px;
+  padding: 14px;
+  background: #f0faf5;
+  color: var(--green);
+  font-size: 14px;
+  line-height: 1.5;
+}
 .app-header,
 .mobile-header {
   height: 74px;

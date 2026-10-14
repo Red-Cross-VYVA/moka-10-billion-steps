@@ -70,4 +70,3 @@ end $$;
 reset role;
 rollback;
 select 'PASS: 10,000 fixture pagination, contact save/audit, admin/operator/reviewer/driver/inactive/anonymous and cross-org access. All test changes rolled back.' as gis_verification;
-

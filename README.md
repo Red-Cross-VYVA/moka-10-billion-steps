@@ -43,6 +43,6 @@ Phase 1 did not include application authentication. Until Phase 2 authentication
 
 Payments, messaging delivery, AI vision, production cloud deployment, and the Scavenger Hunt remain out of scope. The authenticated Operations and Driver workflows are a demonstration, not a production-ready system.
 
-The Driver PWA includes install metadata, camera-based QR and evidence capture, GPS capture, and English/Arabic layouts. Localhost may expose clearly labelled fictional QR/GPS fallbacks for development; hosted builds do not expose those controls. See `docs/staging-mobile-checklist.md` for the physical-device test procedure.
+The Driver PWA includes install metadata, GPS validation, two-photo evidence capture, and English/Arabic layouts. Localhost may expose a clearly labelled fictional GPS fallback for development; hosted builds do not expose it. See `docs/staging-mobile-checklist.md` for the physical-device test procedure.
 
 Phase 2 Supabase infrastructure is documented in `docs/phase2-supabase.md`. Authentication enforcement and the production data switch remain opt-in until the initial administrator is provisioned.

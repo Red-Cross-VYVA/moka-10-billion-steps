@@ -375,7 +375,8 @@ button {
 .step small {
   color: var(--muted);
 }
-.step button {
+.step button,
+.step-link {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -385,8 +386,10 @@ button {
   border-radius: 10px;
   padding: 10px;
   font-weight: 800;
+  text-decoration: none;
 }
-.step button svg {
+.step button svg,
+.step-link svg {
   width: 18px;
 }
 .ok {
@@ -400,114 +403,6 @@ button {
   padding: 11px;
   border-radius: 10px;
   font-size: 12px;
-}
-.qr-scanner {
-  display: grid;
-  gap: 10px;
-}
-.qr-start {
-  border: 1px solid #b9cad6;
-  background: #eef5f9;
-  color: var(--navy);
-  border-radius: 12px;
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-weight: 800;
-}
-.qr-start svg,
-.qr-verified svg {
-  width: 20px;
-}
-.qr-panel {
-  display: grid;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #f8fafb;
-}
-.qr-panel-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 800;
-}
-.qr-panel-head span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.qr-panel-head button {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-}
-.qr-panel-head svg {
-  width: 18px;
-}
-.qr-panel video {
-  width: 100%;
-  min-height: 180px;
-  border-radius: 10px;
-  background: #172b3a;
-  object-fit: cover;
-}
-.qr-panel p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-.qr-panel .qr-error {
-  color: var(--red);
-}
-.qr-panel form {
-  display: grid;
-  gap: 7px;
-}
-.qr-panel form > label {
-  font-size: 13px;
-  font-weight: 700;
-}
-.qr-panel form > div {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-}
-.qr-panel input {
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 11px;
-  text-transform: uppercase;
-}
-.qr-panel form button {
-  border: 0;
-  border-radius: 10px;
-  background: var(--navy);
-  color: white;
-  padding: 0 16px;
-  font-weight: 800;
-}
-.qr-panel form button:disabled {
-  opacity: 0.45;
-}
-.qr-verified {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #eef8f4;
-  color: var(--green);
-  border-radius: 12px;
-  padding: 12px;
-}
-.qr-verified span {
-  display: grid;
-}
-.qr-verified small {
-  color: var(--muted);
 }
 .photos {
   grid-template-columns: 34px 1fr;

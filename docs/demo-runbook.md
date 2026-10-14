@@ -31,8 +31,8 @@ Never invent or share a password. The tester sets it through the invitation flow
 ## Demonstration workflow
 
 1. Operations assigns a fictional unassigned site to the invited driver.
-2. Driver refreshes assignments, opens the site and verifies its QR code.
-3. Driver captures GPS, an installation photo and a close-up photo, then submits.
+2. Driver refreshes assignments, opens the site and launches external navigation.
+3. At the merchant site, the driver captures GPS, installs the poster, captures an installation photo and a close-up photo, then submits.
 4. Operations opens Review queue and verifies or requests a revisit.
 5. Driver refreshes to see the resulting status and revisit reason.
 

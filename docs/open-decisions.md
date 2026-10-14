@@ -21,3 +21,8 @@ The DMC Functional Specification was not available in the workspace or linked em
 - PostGIS is enabled for site coordinates and future proximity queries.
 - Status, attempt, and exception lifecycles remain separate. The Phase 1 transition matrix is enforced in PostgreSQL.
 - Phase 1 mock mode remains available until an initial administrator is provisioned and authenticated mode is explicitly enabled.
+
+## Sites Activation workflow decision approved on 14 October 2026
+
+- QR scanning is removed from the Sites Activation Driver PWA. Field submission requires GPS capture plus an installation photo and a close-up photo before Operations review.
+- The existing `qr_mismatch` exception enum value remains in PostgreSQL for migration and historical-record compatibility, but it is no longer offered as an active Sites Activation workflow control. QR checkpoint scanning remains reserved for the future Scavenger Hunt module.

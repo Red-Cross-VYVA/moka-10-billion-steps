@@ -52,7 +52,7 @@ const exceptionReasons: Record<string, string> = {
   unable_to_install: "Unable to install",
   simulated_ai_flag: "Simulated AI flag",
   gps_mismatch: "GPS mismatch",
-  qr_mismatch: "QR mismatch",
+  qr_mismatch: "Legacy QR exception",
   rejected_evidence: "Rejected evidence",
   other: "Other",
 };

@@ -16,7 +16,7 @@ import {
   Upload,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { QrScanner } from "@/features/QrScanner";
+import { canSubmitEvidence, getEvidenceSubmissionIssue } from "@/features/evidence";
 import { driverCopy, type DriverLanguage } from "@/features/i18n";
 
 type Driver = {
@@ -110,7 +110,6 @@ export function DriverApp() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [position, setPosition] = useState<Position>();
-  const [qrVerified, setQrVerified] = useState(false);
   const [attemptId, setAttemptId] = useState<string>();
   const [photoOne, setPhotoOne] = useState<File>();
   const [photoTwo, setPhotoTwo] = useState<File>();
@@ -275,27 +274,28 @@ export function DriverApp() {
     if (metadataError) throw metadataError;
   };
   const submit = async () => {
-    if (!active || !photoOne || !photoTwo) {
-      setError("Capture both evidence photos before submitting.");
-      return;
-    }
-    if (!qrVerified) {
-      setError("Verify the site QR code before submitting.");
+    if (!active) return;
+    const submissionIssue = getEvidenceSubmissionIssue({
+      gpsCaptured: Boolean(position),
+      installationPhoto: Boolean(photoOne),
+      closeUpPhoto: Boolean(photoTwo),
+    });
+    if (submissionIssue) {
+      setError(submissionIssue);
       return;
     }
     setBusy(true);
     setError("");
     try {
       const id = await ensureAttempt();
-      const gps = position ?? (await capturePosition());
-      setPosition(gps);
+      const gps = position!;
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Your session has expired.");
       await Promise.all([
-        upload(photoOne, "installation_photo", id, user.id),
-        upload(photoTwo, "close_up_photo", id, user.id),
+        upload(photoOne!, "installation_photo", id, user.id),
+        upload(photoTwo!, "close_up_photo", id, user.id),
       ]);
       const { error: submitError } = await supabase.rpc(
         "submit_site_evidence",
@@ -380,7 +380,6 @@ export function DriverApp() {
               setActive(undefined);
               setAttemptId(undefined);
               setPosition(undefined);
-              setQrVerified(false);
               setPhotoOne(undefined);
               setPhotoTwo(undefined);
               setError("");
@@ -407,13 +406,6 @@ export function DriverApp() {
                 relationName(active.city) ||
                 tr("locationUnavailable")}
             </p>
-            <a
-              href={`https://www.google.com/maps?q=${active.latitude},${active.longitude}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <ExternalLink /> {tr("openMaps")}
-            </a>
           </div>
           {active.status === "revisit_required" && (
             <div className="revisit">
@@ -433,21 +425,18 @@ export function DriverApp() {
             <div className="step">
               <span>1</span>
               <div>
-                <b>{tr("verifyQr")}</b>
-                <small>{tr("verifyQrHint")}</small>
+                <b>{tr("navigateToSite")}</b>
+                <small>{tr("navigationHint")}</small>
               </div>
+              <a
+                className="step-link"
+                href={`https://www.google.com/maps?q=${active.latitude},${active.longitude}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <ExternalLink /> {tr("openMaps")}
+              </a>
             </div>
-            <QrScanner
-              expectedCode={active.site_code}
-              verified={qrVerified}
-              onVerified={() => {
-                setQrVerified(true);
-                setError("");
-                setConfirmation("Site QR verified. Capture your location next.");
-              }}
-              allowManualFallback={localDemo}
-              language={language}
-            />
             <div className="step">
               <span>2</span>
               <div>
@@ -546,7 +535,14 @@ export function DriverApp() {
             <button
               className="submit"
               onClick={submit}
-              disabled={busy || !qrVerified || !photoOne || !photoTwo}
+              disabled={
+                busy ||
+                !canSubmitEvidence({
+                  gpsCaptured: Boolean(position),
+                  installationPhoto: Boolean(photoOne),
+                  closeUpPhoto: Boolean(photoTwo),
+                })
+              }
             >
               <Upload />
               {busy ? tr("submitting") : tr("submit")}
@@ -616,7 +612,6 @@ export function DriverApp() {
                 setActive(site);
                 setError("");
                 setConfirmation("");
-                setQrVerified(false);
                 const inProgress = site.visit_attempts?.find(
                   (attempt) => attempt.status === "in_progress",
                 );

@@ -2148,7 +2148,6 @@ function Exceptions({
   const reasons = [
     "GPS mismatch",
     "Unable to install",
-    "QR mismatch",
     "Rejected evidence",
     "Simulated AI flag",
   ];

@@ -88,13 +88,9 @@ import {
   updateLiveDriver,
 } from "@/data/live-operations";
 
-const MapView = dynamic(() => import("./MapView").then((m) => m.MapView), {
+const GisWorkspace = dynamic(() => import("../gis/GisWorkspace"), {
   ssr: false,
-  loading: () => (
-    <div className="map-loading">
-      <RefreshCw className="spin" /> Loading 10,000 sites…
-    </div>
-  ),
+  loading: () => <div className="map-loading">Loading GIS…</div>,
 });
 const BASE_SITES = generateSites();
 const BASE_BY_ID = new Map(BASE_SITES.map((site) => [site.id, site]));
@@ -152,12 +148,13 @@ export function OperationsApp() {
     () => (liveMode ? createSupabaseClient() : null),
     [liveMode],
   );
-  const [sites, setSites] = useState<Site[]>(BASE_SITES);
+  const [sites, setSites] = useState<Site[]>(liveMode ? [] : BASE_SITES);
   const [drivers, setDrivers] = useState<Driver[]>(() =>
-    fixtureDrivers.map((d) => ({ ...d })),
+    liveMode ? [] : fixtureDrivers.map((d) => ({ ...d })),
   );
-  const [notifications, setNotifications] =
-    useState<Notification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>(
+    liveMode ? [] : initialNotifications,
+  );
   const [selected, setSelected] = useState<Site>();
   const [toast, setToast] = useState<string>();
   const [mobileNav, setMobileNav] = useState(false);
@@ -183,6 +180,11 @@ export function OperationsApp() {
   }, [supabase]);
   useEffect(() => {
     if (liveMode) {
+      if (page === "map") {
+        setLiveLoading(false);
+        return;
+      }
+      setLiveLoading(true);
       void refreshLive();
       return;
     }
@@ -209,7 +211,7 @@ export function OperationsApp() {
       }
     } catch {}
     setHydrated(true);
-  }, [liveMode, refreshLive]);
+  }, [liveMode, refreshLive, page]);
   useEffect(() => {
     if (liveMode || !hydrated) return;
     try {
@@ -434,13 +436,13 @@ export function OperationsApp() {
             </div>
           </header>
           <div className="content">
-            {liveLoading && (
+            {liveLoading && page !== "map" && (
               <div className="panel empty">
                 <RefreshCw className="spin" />
                 <h2>Loading hosted demo data</h2>
               </div>
             )}
-            {liveError && (
+            {liveError && page !== "map" && (
               <div className="report-callout">
                 <AlertTriangle />
                 <div>
@@ -464,8 +466,13 @@ export function OperationsApp() {
                 liveMode={liveMode}
               />
             )}{" "}
-            {!liveLoading && page === "map" && (
-              <MapPage sites={sites} onSelect={setSelected} />
+            {page === "map" && (
+              <GisWorkspace
+                language={language}
+                liveMode={liveMode}
+                demoSites={sites}
+                demoDrivers={drivers}
+              />
             )}{" "}
             {!liveLoading && page === "assignments" && (
               <Assignments
@@ -1419,67 +1426,6 @@ function ImportModal({
         </>
       )}
     </Modal>
-  );
-}
-
-function MapPage({
-  sites,
-  onSelect,
-}: {
-  sites: Site[];
-  onSelect: (s: Site) => void;
-}) {
-  const language = useContext(LanguageContext);
-  const [status, setStatus] = useState("");
-  const filtered = useMemo(
-    () => sites.filter((s) => !status || s.status === status),
-    [sites, status],
-  );
-  return (
-    <>
-      <PageIntro
-        title={t(language, "map")}
-        text={
-          language === "ar"
-            ? "تغطية التفعيل المجمّعة في أنحاء المملكة العربية السعودية."
-            : "Clustered activation coverage across Saudi Arabia."
-        }
-        actions={
-          <select
-            className="standalone-select"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="">{t(language, "allStatuses")}</option>
-            {SITE_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {statusLabel(language, s)}
-              </option>
-            ))}
-          </select>
-        }
-      />
-      <div className="panel map-panel">
-        <div className="map-stat">
-          <b>{fmt.format(filtered.length)}</b>
-          <span>{language === "ar" ? "موقع ظاهر" : "sites in view"}</span>
-        </div>
-        <MapView sites={filtered} onSelect={onSelect} />
-        <div className="map-legend">
-          <b>{language === "ar" ? "حالة الموقع" : "Site status"}</b>
-          {SITE_STATUSES.slice(0, 7).map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatus(status === s ? "" : s)}
-              className={status === s ? "selected" : ""}
-            >
-              <i className={statusTone[s]} />
-              {statusLabel(language, s)}
-            </button>
-          ))}
-        </div>
-      </div>
-    </>
   );
 }
 

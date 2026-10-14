@@ -63,6 +63,7 @@ export interface Site {
   audit: AuditEvent[];
   evidence?: SiteEvidence[];
   gpsProximityMetres?: number;
+  fieldNotes?: string;
 }
 export interface Driver {
   id: string;

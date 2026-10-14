@@ -2104,6 +2104,10 @@ function Reviews({
               <button onClick={() => onSelect(active)}>View history</button>
             </div>
           </div>
+          <div className="driver-note">
+            <span className="eyebrow">Driver note</span>
+            <p>{active.fieldNotes || "No field note was submitted."}</p>
+          </div>
           <div className="decision-box">
             <label>
               Decline / revisit reason

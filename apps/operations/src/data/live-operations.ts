@@ -30,6 +30,7 @@ type EvidenceRow = {
 type AttemptRow = {
   id: string;
   status: keyof typeof attemptStatuses;
+  notes: string | null;
   submitted_at: string | null;
   decided_at: string | null;
   gps_proximity_metres: number | null;
@@ -79,7 +80,7 @@ export async function loadLiveOperations(client: SupabaseClient) {
       region:regions!sites_region_id_fkey(name_en),
       city:cities!sites_city_id_fkey(name_en),
       category:merchant_categories!sites_category_id_fkey(name_en),
-      visit_attempts(id,status,submitted_at,decided_at,gps_proximity_metres,evidence_files(id,kind,object_path,created_at)),
+      visit_attempts(id,status,notes,submitted_at,decided_at,gps_proximity_metres,evidence_files(id,kind,object_path,created_at)),
       exceptions(id,reason,status,created_at),
       audit_events(id,created_at,action,detail,actor_id)
     `,
@@ -143,6 +144,7 @@ export async function loadLiveOperations(client: SupabaseClient) {
           ? attemptStatuses[attempts[0].status]
           : "Not started",
         gpsProximityMetres: attempts[0]?.gps_proximity_metres ?? undefined,
+        fieldNotes: attempts[0]?.notes?.trim() || undefined,
         exceptionStatus: currentException
           ? exceptionStatuses[currentException.status]
           : undefined,

@@ -8,7 +8,7 @@ export function getEvidenceSubmissionIssue(
   requirements: EvidenceRequirements,
 ) {
   if (!requirements.gpsCaptured) {
-    return "Capture GPS at the merchant site before submitting.";
+    return "Capture location before submitting.";
   }
   if (!requirements.installationPhoto || !requirements.closeUpPhoto) {
     return "Capture both evidence photos before submitting.";

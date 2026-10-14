@@ -9,7 +9,7 @@ describe("driver evidence requirements", () => {
         installationPhoto: true,
         closeUpPhoto: true,
       }),
-    ).toBe("Capture GPS at the merchant site before submitting.");
+    ).toBe("Capture location before submitting.");
   });
 
   it("requires both installation photos", () => {

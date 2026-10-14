@@ -50,12 +50,12 @@ const en = {
   photoStampFailed: "Could not stamp this photo. Retake it.",
   evidenceTimeNote:
     "Saudi time, GPS and site ID are stamped on each photo. Server upload time is the official record.",
-  fieldNotes: "Field notes",
+  fieldNotes: "Field notes (optional)",
   notesPlaceholder: "Optional notes, or explain why installation was not possible",
   submit: "Submit evidence",
   submitting: "Submitting…",
   unable: "Report installation issue",
-  issueHint: "Can’t install? Add a note, then report it.",
+  issueHint: "Installation blocked? Add the reason, then report it.",
   loading: "Loading assignments",
 };
 
@@ -109,12 +109,12 @@ const ar: Record<keyof typeof en, string> = {
   photoStampFailed: "تعذر ختم الصورة. أعد التقاطها.",
   evidenceTimeNote:
     "تُختم كل صورة بتوقيت السعودية والموقع ومعرّف الموقع. وقت الرفع المسجل في الخادم هو السجل الرسمي.",
-  fieldNotes: "ملاحظات ميدانية",
+  fieldNotes: "ملاحظات ميدانية (اختياري)",
   notesPlaceholder: "ملاحظات اختيارية، أو اشرح سبب تعذر التركيب",
   submit: "إرسال الأدلة",
   submitting: "جارٍ الإرسال…",
   unable: "الإبلاغ عن مشكلة في التركيب",
-  issueHint: "تعذر التركيب؟ أضف ملاحظة ثم أرسل البلاغ.",
+  issueHint: "تعذر إكمال التركيب؟ أضف السبب ثم أرسل البلاغ.",
   loading: "جارٍ تحميل المهمات",
 };
 

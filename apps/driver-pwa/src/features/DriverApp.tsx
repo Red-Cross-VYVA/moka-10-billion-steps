@@ -18,6 +18,13 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { canSubmitEvidence, getEvidenceSubmissionIssue } from "@/features/evidence";
 import { driverCopy, type DriverLanguage } from "@/features/i18n";
+import {
+  buildEvidenceObjectPaths,
+  fileExtension,
+  sha256,
+  stampEvidencePhoto,
+  type CapturedPhoto,
+} from "@/features/photo-evidence";
 
 type Driver = {
   id: string;
@@ -111,8 +118,11 @@ export function DriverApp() {
   const [busy, setBusy] = useState(false);
   const [position, setPosition] = useState<Position>();
   const [attemptId, setAttemptId] = useState<string>();
-  const [photoOne, setPhotoOne] = useState<File>();
-  const [photoTwo, setPhotoTwo] = useState<File>();
+  const [photoOne, setPhotoOne] = useState<CapturedPhoto>();
+  const [photoTwo, setPhotoTwo] = useState<CapturedPhoto>();
+  const [processingPhoto, setProcessingPhoto] = useState<
+    "installation" | "closeup"
+  >();
   const [notes, setNotes] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [localDemo, setLocalDemo] = useState(false);
@@ -236,41 +246,145 @@ export function DriverApp() {
     setAttemptId(data);
     return data as string;
   };
+  const getServerCaptureTime = async () => {
+    const response = await fetch("/api/time", { cache: "no-store" });
+    if (!response.ok) throw new Error(tr("captureTimeUnavailable"));
+    const payload = (await response.json()) as { serverTime?: string };
+    if (!payload.serverTime || Number.isNaN(Date.parse(payload.serverTime))) {
+      throw new Error(tr("captureTimeInvalid"));
+    }
+    return payload.serverTime;
+  };
+  const capturePhoto = async (
+    file: File | undefined,
+    slot: "installation" | "closeup",
+  ) => {
+    if (!file || !active || !driver) return;
+    if (!position) {
+      setError(tr("gpsBeforePhotos"));
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError(tr("photoTypeError"));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError(tr("photoSizeError"));
+      return;
+    }
+    setProcessingPhoto(slot);
+    setError("");
+    try {
+      const capturedAt = await getServerCaptureTime();
+      const evidenceUid = crypto.randomUUID();
+      const stamped = await stampEvidencePhoto(file, {
+        capturedAt,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        siteCode: active.site_code,
+        language,
+      });
+      if (stamped.size > 10 * 1024 * 1024) {
+        throw new Error(tr("stampedPhotoSizeError"));
+      }
+      const next: CapturedPhoto = {
+        original: file,
+        stamped,
+        evidenceUid,
+        capturedAt,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        siteCode: active.site_code,
+        language,
+        previewUrl: URL.createObjectURL(stamped),
+      };
+      const setter = slot === "installation" ? setPhotoOne : setPhotoTwo;
+      setter((previous) => {
+        if (previous) URL.revokeObjectURL(previous.previewUrl);
+        return next;
+      });
+      setConfirmation(tr("photoReady"));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : tr("photoStampFailed"));
+    } finally {
+      setProcessingPhoto(undefined);
+    }
+  };
   const upload = async (
-    file: File,
+    photo: CapturedPhoto,
     kind: "installation_photo" | "close_up_photo",
     id: string,
     userId: string,
   ) => {
     if (!active || !driver) throw new Error("Site context is missing.");
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type))
-      throw new Error("Photos must be JPEG, PNG or WebP.");
-    if (file.size > 10 * 1024 * 1024)
-      throw new Error("Each photo must be smaller than 10 MB.");
-    const extension =
-      file.type === "image/png"
-        ? "png"
-        : file.type === "image/webp"
-          ? "webp"
-          : "jpg";
-    const path = `${driver.organization_id}/${active.id}/${id}/${crypto.randomUUID()}.${extension}`;
-    const { error: uploadError } = await supabase.storage
-      .from("site-evidence")
-      .upload(path, file, { contentType: file.type, upsert: false });
-    if (uploadError) throw uploadError;
+    const paths = buildEvidenceObjectPaths(
+      driver.organization_id,
+      active.id,
+      id,
+      photo.evidenceUid,
+      fileExtension(photo.original),
+      fileExtension(photo.stamped),
+    );
+    const sharedMetadata = {
+      evidence_uid: photo.evidenceUid,
+      capture_timestamp: photo.capturedAt,
+      capture_time_source: "application_server",
+      capture_timezone: "Asia/Riyadh",
+      stamp_language: photo.language ?? language,
+      driver_id: driver.id,
+      site_id: active.id,
+      site_code: active.site_code,
+      attempt_id: id,
+      latitude: photo.latitude.toFixed(6),
+      longitude: photo.longitude.toFixed(6),
+    };
+    const [originalChecksum, stampedChecksum] = await Promise.all([
+      sha256(photo.original),
+      sha256(photo.stamped),
+    ]);
+    const [originalUpload, stampedUpload] = await Promise.all([
+      supabase.storage.from("site-evidence").upload(paths.original, photo.original, {
+        contentType: photo.original.type,
+        upsert: false,
+        metadata: { ...sharedMetadata, variant: "original" },
+      }),
+      supabase.storage.from("site-evidence").upload(paths.stamped, photo.stamped, {
+        contentType: photo.stamped.type,
+        upsert: false,
+        metadata: { ...sharedMetadata, variant: "stamped" },
+      }),
+    ]);
+    if (originalUpload.error) throw originalUpload.error;
+    if (stampedUpload.error) throw stampedUpload.error;
     const { error: metadataError } = await supabase
       .from("evidence_files")
-      .insert({
-        organization_id: driver.organization_id,
-        site_id: active.id,
-        attempt_id: id,
-        kind,
-        bucket_id: "site-evidence",
-        object_path: path,
-        mime_type: file.type,
-        size_bytes: file.size,
-        uploaded_by: userId,
-      });
+      .insert([
+        {
+          id: photo.evidenceUid,
+          organization_id: driver.organization_id,
+          site_id: active.id,
+          attempt_id: id,
+          kind,
+          bucket_id: "site-evidence",
+          object_path: paths.stamped,
+          mime_type: photo.stamped.type,
+          size_bytes: photo.stamped.size,
+          checksum_sha256: stampedChecksum,
+          uploaded_by: userId,
+        },
+        {
+          organization_id: driver.organization_id,
+          site_id: active.id,
+          attempt_id: id,
+          kind: "other",
+          bucket_id: "site-evidence",
+          object_path: paths.original,
+          mime_type: photo.original.type,
+          size_bytes: photo.original.size,
+          checksum_sha256: originalChecksum,
+          uploaded_by: userId,
+        },
+      ]);
     if (metadataError) throw metadataError;
   };
   const submit = async () => {
@@ -308,8 +422,14 @@ export function DriverApp() {
       );
       if (submitError) throw submitError;
       setConfirmation("Evidence submitted to Operations for review.");
-      setPhotoOne(undefined);
-      setPhotoTwo(undefined);
+      setPhotoOne((current) => {
+        if (current) URL.revokeObjectURL(current.previewUrl);
+        return undefined;
+      });
+      setPhotoTwo((current) => {
+        if (current) URL.revokeObjectURL(current.previewUrl);
+        return undefined;
+      });
       setNotes("");
       await load();
     } catch (cause) {
@@ -380,8 +500,14 @@ export function DriverApp() {
               setActive(undefined);
               setAttemptId(undefined);
               setPosition(undefined);
-              setPhotoOne(undefined);
-              setPhotoTwo(undefined);
+              setPhotoOne((current) => {
+                if (current) URL.revokeObjectURL(current.previewUrl);
+                return undefined;
+              });
+              setPhotoTwo((current) => {
+                if (current) URL.revokeObjectURL(current.previewUrl);
+                return undefined;
+              });
               setError("");
               setConfirmation("");
             }}
@@ -426,7 +552,6 @@ export function DriverApp() {
               <span>1</span>
               <div>
                 <b>{tr("navigateToSite")}</b>
-                <small>{tr("navigationHint")}</small>
               </div>
               <a
                 className="step-link"
@@ -441,7 +566,6 @@ export function DriverApp() {
               <span>2</span>
               <div>
                 <b>{tr("captureLocation")}</b>
-                <small>{tr("locationRequired")}</small>
               </div>
               {position ? (
                 <CheckCircle2 className="ok" />
@@ -467,51 +591,88 @@ export function DriverApp() {
               <span>3</span>
               <div>
                 <b>{tr("addPhotos")}</b>
-                <small>{tr("photosHint")}</small>
               </div>
             </div>
             <div className="photo-inputs">
-              <label className={photoOne ? "ready" : ""}>
-                <Camera />
+              <label
+                className={photoOne ? "ready" : ""}
+                aria-disabled={!position || busy || Boolean(processingPhoto)}
+              >
+                {photoOne ? (
+                  <img src={photoOne.previewUrl} alt="Stamped installation evidence preview" />
+                ) : (
+                  <Camera />
+                )}
                 {photoOne ? (
                   <>
                     <b>{tr("installationReady")}</b>
-                    <small>{photoOne.name}</small>
+                    <small>{tr("tapToRetake")}</small>
                   </>
                 ) : (
                   <>
                     <b>{tr("installationPhoto")}</b>
-                    <small>{tr("useCamera")}</small>
+                    <small>
+                      {processingPhoto === "installation"
+                        ? tr("stampingPhoto")
+                        : position
+                          ? tr("useCamera")
+                          : tr("gpsBeforePhotos")}
+                    </small>
                   </>
                 )}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   capture="environment"
-                  onChange={(event) => setPhotoOne(event.target.files?.[0])}
+                  disabled={!position || busy || Boolean(processingPhoto)}
+                  onChange={(event) => {
+                    void capturePhoto(event.target.files?.[0], "installation");
+                    event.target.value = "";
+                  }}
                 />
               </label>
-              <label className={photoTwo ? "ready" : ""}>
-                <Camera />
+              <label
+                className={photoTwo ? "ready" : ""}
+                aria-disabled={!position || busy || Boolean(processingPhoto)}
+              >
+                {photoTwo ? (
+                  <img src={photoTwo.previewUrl} alt="Stamped close-up evidence preview" />
+                ) : (
+                  <Camera />
+                )}
                 {photoTwo ? (
                   <>
                     <b>{tr("closeupReady")}</b>
-                    <small>{photoTwo.name}</small>
+                    <small>{tr("tapToRetake")}</small>
                   </>
                 ) : (
                   <>
                     <b>{tr("closeupEvidence")}</b>
-                    <small>{tr("useCamera")}</small>
+                    <small>
+                      {processingPhoto === "closeup"
+                        ? tr("stampingPhoto")
+                        : position
+                          ? tr("useCamera")
+                          : tr("gpsBeforePhotos")}
+                    </small>
                   </>
                 )}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   capture="environment"
-                  onChange={(event) => setPhotoTwo(event.target.files?.[0])}
+                  disabled={!position || busy || Boolean(processingPhoto)}
+                  onChange={(event) => {
+                    void capturePhoto(event.target.files?.[0], "closeup");
+                    event.target.value = "";
+                  }}
                 />
               </label>
             </div>
+            <details className="evidence-time-note">
+              <summary>{tr("aboutPhotoStamps")}</summary>
+              <p>{tr("evidenceTimeNote")}</p>
+            </details>
             <label className="notes">
               {tr("fieldNotes")}
               <textarea

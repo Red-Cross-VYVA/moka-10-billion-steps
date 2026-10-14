@@ -25,6 +25,7 @@ type EvidenceRow = {
   id: string;
   kind: "installation_photo" | "close_up_photo" | "other";
   object_path: string;
+  created_at: string;
 };
 type AttemptRow = {
   id: string;
@@ -78,7 +79,7 @@ export async function loadLiveOperations(client: SupabaseClient) {
       region:regions!sites_region_id_fkey(name_en),
       city:cities!sites_city_id_fkey(name_en),
       category:merchant_categories!sites_category_id_fkey(name_en),
-      visit_attempts(id,status,submitted_at,decided_at,gps_proximity_metres,evidence_files(id,kind,object_path)),
+      visit_attempts(id,status,submitted_at,decided_at,gps_proximity_metres,evidence_files(id,kind,object_path,created_at)),
       exceptions(id,reason,status,created_at),
       audit_events(id,created_at,action,detail,actor_id)
     `,
@@ -122,6 +123,7 @@ export async function loadLiveOperations(client: SupabaseClient) {
             id: item.id,
             kind: item.kind,
             signedUrl: data?.signedUrl ?? "",
+            uploadedAt: item.created_at,
           };
         }),
       );

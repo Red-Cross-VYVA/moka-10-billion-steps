@@ -2033,6 +2033,15 @@ function Reviews({
                   <small>Awaiting driver upload</small>
                 </div>
               )}
+              {active.evidence?.find(
+                (item) => item.kind === "installation_photo",
+              )?.uploadedAt ? (
+                <small className="server-upload-time">
+                  Server uploaded {new Date(active.evidence.find(
+                    (item) => item.kind === "installation_photo",
+                  )!.uploadedAt!).toLocaleString("en-GB", { timeZone: "Asia/Riyadh" })} AST
+                </small>
+              ) : null}
             </div>
             <div>
               <span>Close-up evidence</span>
@@ -2053,6 +2062,14 @@ function Reviews({
                   <small>Awaiting driver upload</small>
                 </div>
               )}
+              {active.evidence?.find((item) => item.kind === "close_up_photo")
+                ?.uploadedAt ? (
+                <small className="server-upload-time">
+                  Server uploaded {new Date(active.evidence.find(
+                    (item) => item.kind === "close_up_photo",
+                  )!.uploadedAt!).toLocaleString("en-GB", { timeZone: "Asia/Riyadh" })} AST
+                </small>
+              ) : null}
             </div>
           </div>
           <div className="evidence-metrics">

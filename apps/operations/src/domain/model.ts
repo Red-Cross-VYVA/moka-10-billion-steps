@@ -41,6 +41,7 @@ export interface SiteEvidence {
   id: string;
   kind: "installation_photo" | "close_up_photo" | "other";
   signedUrl: string;
+  uploadedAt?: string;
 }
 export interface Site {
   id: string;

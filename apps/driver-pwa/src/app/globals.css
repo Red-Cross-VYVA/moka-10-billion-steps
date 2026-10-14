@@ -427,6 +427,23 @@ button {
   border-style: solid;
   background: #eef8f4;
   color: var(--green);
+  place-content: stretch;
+  padding: 7px;
+}
+.photo-inputs label[aria-disabled="true"] {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+.photo-inputs label.ready img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: contain;
+  background: #0b1d28;
+  border-radius: 10px;
+}
+.photo-inputs label.ready b,
+.photo-inputs label.ready small {
+  padding-inline: 4px;
 }
 .photo-inputs input {
   position: absolute;
@@ -442,6 +459,20 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 130px;
+}
+.evidence-time-note {
+  margin: -2px 2px 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.evidence-time-note summary {
+  cursor: pointer;
+  width: max-content;
+  font-weight: 700;
+}
+.evidence-time-note p {
+  margin: 7px 0 0;
 }
 .notes textarea {
   min-height: 86px;

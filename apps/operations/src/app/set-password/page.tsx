@@ -11,10 +11,23 @@ export default function SetPasswordPage() {
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
     let active = true;
     async function establishInviteSession() {
+      const search = new URLSearchParams(window.location.search);
+      const isRecovery = search.get("mode") === "recovery";
+      const code = search.get("code");
+      setRecovery(isRecovery);
+      if (code) {
+        const { error: exchangeError } = await createClient().auth.exchangeCodeForSession(code);
+        window.history.replaceState(null, "", `/set-password${isRecovery ? "?mode=recovery" : ""}`);
+        if (!active) return;
+        if (exchangeError) setError(exchangeError.message);
+        else setReady(true);
+        return;
+      }
       const params = new URLSearchParams(window.location.hash.slice(1));
       const accessToken = params.get("access_token");
       const refreshToken = params.get("refresh_token");
@@ -26,7 +39,7 @@ export default function SetPasswordPage() {
         if (!active) return;
         if (sessionError || !session) {
           setError(
-            "This invitation link is invalid or has expired. Request a new invitation.",
+            "This password link is invalid or has expired. Request a new recovery link.",
           );
         } else {
           setReady(true);
@@ -51,8 +64,13 @@ export default function SetPasswordPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (password.length < 8) {
-      setError("Use at least 8 characters.");
+    if (
+      password.length < 8 ||
+      !/[a-z]/.test(password) ||
+      !/[A-Z]/.test(password) ||
+      !/[0-9]/.test(password)
+    ) {
+      setError("Use at least 8 characters with lowercase, uppercase and a number.");
       return;
     }
     if (password !== confirmation) {
@@ -81,9 +99,9 @@ export default function SetPasswordPage() {
           <small>Operations control</small>
         </div>
         <div>
-          <span className="eyebrow">Invitation accepted</span>
-          <h1>Create your password</h1>
-          <p>Choose a password for your invite-only account.</p>
+          <span className="eyebrow">{recovery ? "Secure recovery" : "Invitation accepted"}</span>
+          <h1>{recovery ? "Reset your password" : "Create your password"}</h1>
+          <p>{recovery ? "Choose a new password for your account." : "Choose a password for your invite-only account."}</p>
         </div>
         <form onSubmit={submit}>
           <label>
@@ -120,7 +138,7 @@ export default function SetPasswordPage() {
             {busy ? "Saving…" : "Set password and continue"}
           </button>
         </form>
-        <small>Your invitation is processed securely by Supabase Auth.</small>
+        <small>Your password is processed securely and is never visible to administrators.</small>
       </section>
     </main>
   );

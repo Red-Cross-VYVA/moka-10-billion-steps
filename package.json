@@ -12,7 +12,7 @@
     "dev:driver": "npm run dev -w @moka/driver-pwa",
     "build": "npm run build -w @moka/operations",
     "build:all": "npm run build -w @moka/operations && npm run build -w @moka/driver-pwa",
-    "test": "npm run test -w @moka/operations",
+    "test": "npm run test -w @moka/operations && npm run test -w @moka/driver-pwa",
     "typecheck": "npm run typecheck -w @moka/operations && npm run typecheck -w @moka/driver-pwa",
     "validate:auth-emails": "node supabase/templates/auth/validate.mjs",
     "supabase:start": "supabase start",

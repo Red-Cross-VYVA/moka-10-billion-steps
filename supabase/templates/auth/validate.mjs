@@ -14,7 +14,6 @@ const required = [
   '<html lang="en" dir="ltr">',
   'name="viewport"',
   'role="presentation"',
-  "{{ .ConfirmationURL }}",
   "Security notice:",
   "Delta Marketing Co.",
   "10 Billion Steps",
@@ -33,7 +32,17 @@ for (const [file, subject] of Object.entries(templates)) {
     if (pattern.test(html)) errors.push(`contains prohibited text ${pattern}`);
   }
   if (!html.includes(`<title>${subject}</title>`)) errors.push("title does not match subject");
-  if ((html.match(/{{ \.ConfirmationURL }}/g) ?? []).length < 2) errors.push("CTA and fallback link must both use ConfirmationURL");
+  if (file === "recovery.html") {
+    if ((html.match(/{{ \.RedirectTo }}/g) ?? []).length < 3) {
+      errors.push("CTA and fallback link must both use RedirectTo");
+    }
+    if ((html.match(/{{ \.TokenHash }}/g) ?? []).length < 3) {
+      errors.push("CTA and fallback link must both use TokenHash");
+    }
+    if (!html.includes("type=recovery")) errors.push("recovery link must set the OTP type");
+  } else if ((html.match(/{{ \.ConfirmationURL }}/g) ?? []).length < 2) {
+    errors.push("CTA and fallback link must both use ConfirmationURL");
+  }
 
   if (errors.length) {
     failed = true;

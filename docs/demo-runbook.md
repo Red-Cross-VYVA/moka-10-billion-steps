@@ -13,11 +13,7 @@ Both applications need the same `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPA
 
 ## First administrator
 
-1. In Supabase Authentication → Users, choose **Add user → Send invitation**.
-2. Invite `karim.assad@mokadigital.net`.
-3. After the Auth user exists, add it to organization `00000000-0000-4000-8000-000000000001` as role `admin`.
-4. Accept the email invitation and set a password that meets the hosted policy.
-5. Enable `NEXT_PUBLIC_SUPABASE_AUTH_REQUIRED=true` for the Operations development server and restart it.
+The initial administrator `karim.assad@mokadigital.net` is already invited, confirmed, and active in organization `00000000-0000-4000-8000-000000000001` with role `admin`. Enable `NEXT_PUBLIC_SUPABASE_AUTH_REQUIRED=true` for the Operations development server and restart it.
 
 The local invite flow detects Supabase's invitation fragment and opens `/set-password`. The token is removed from the address bar as soon as the browser session is established.
 
@@ -35,8 +31,8 @@ Never invent or share a password. The tester sets it through the invitation flow
 ## Demonstration workflow
 
 1. Operations assigns a fictional unassigned site to the invited driver.
-2. Driver refreshes assignments, opens the site and captures GPS.
-3. Driver captures an installation photo and close-up photo, then submits.
+2. Driver refreshes assignments, opens the site and verifies its QR code.
+3. Driver captures GPS, an installation photo and a close-up photo, then submits.
 4. Operations opens Review queue and verifies or requests a revisit.
 5. Driver refreshes to see the resulting status and revisit reason.
 

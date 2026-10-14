@@ -34,6 +34,28 @@ type AttemptRow = {
   gps_proximity_metres: number | null;
   evidence_files: EvidenceRow[] | null;
 };
+type ExceptionRow = {
+  id: string;
+  reason: string;
+  status: "open" | "investigating" | "awaiting_revisit" | "resolved" | "closed";
+  created_at: string;
+};
+
+const exceptionStatuses = {
+  open: "Open",
+  investigating: "Investigating",
+  awaiting_revisit: "Awaiting revisit",
+  resolved: "Resolved",
+  closed: "Closed",
+} as const;
+const exceptionReasons: Record<string, string> = {
+  unable_to_install: "Unable to install",
+  simulated_ai_flag: "Simulated AI flag",
+  gps_mismatch: "GPS mismatch",
+  qr_mismatch: "QR mismatch",
+  rejected_evidence: "Rejected evidence",
+  other: "Other",
+};
 
 function relationName(value: Relation) {
   return Array.isArray(value) ? value[0]?.name_en : value?.name_en;
@@ -57,6 +79,7 @@ export async function loadLiveOperations(client: SupabaseClient) {
       city:cities!sites_city_id_fkey(name_en),
       category:merchant_categories!sites_category_id_fkey(name_en),
       visit_attempts(id,status,submitted_at,decided_at,gps_proximity_metres,evidence_files(id,kind,object_path)),
+      exceptions(id,reason,status,created_at),
       audit_events(id,created_at,action,detail,actor_id)
     `,
       )
@@ -84,6 +107,12 @@ export async function loadLiveOperations(client: SupabaseClient) {
           Date.parse(a.submitted_at ?? "1970-01-01"),
       );
       const evidenceRows = attempts[0]?.evidence_files ?? [];
+      const exceptions = ((row.exceptions ?? []) as ExceptionRow[]).sort(
+        (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+      );
+      const currentException = exceptions.find((item) =>
+        ["open", "investigating", "awaiting_revisit"].includes(item.status),
+      );
       const evidence = await Promise.all(
         evidenceRows.map(async (item) => {
           const { data } = await client.storage
@@ -112,6 +141,13 @@ export async function loadLiveOperations(client: SupabaseClient) {
           ? attemptStatuses[attempts[0].status]
           : "Not started",
         gpsProximityMetres: attempts[0]?.gps_proximity_metres ?? undefined,
+        exceptionStatus: currentException
+          ? exceptionStatuses[currentException.status]
+          : undefined,
+        exceptionReason: currentException
+          ? (exceptionReasons[currentException.reason] ?? currentException.reason)
+          : undefined,
+        exceptionOpenedAt: currentException?.created_at,
         evidence,
         visitAttempts: attempts.map((attempt) => ({
           id: attempt.id,
@@ -237,5 +273,24 @@ export async function updateLiveSiteStatus(
     .from("sites")
     .update({ status: values[status] })
     .eq("site_code", siteCode);
+  if (error) throw error;
+}
+
+export async function resolveLiveException(
+  client: SupabaseClient,
+  siteCode: string,
+  status: "Assigned" | "Verified" | "Closed / Cancelled",
+  notes: string,
+) {
+  const values = {
+    Assigned: "assigned",
+    Verified: "verified",
+    "Closed / Cancelled": "closed_cancelled",
+  } as const;
+  const { error } = await client.rpc("resolve_site_exception", {
+    p_site_code: siteCode,
+    p_to_status: values[status],
+    p_notes: notes,
+  });
   if (error) throw error;
 }

@@ -56,6 +56,8 @@ export interface Site {
   address?: string;
   attemptStatus: AttemptStatus;
   exceptionStatus?: ExceptionStatus;
+  exceptionReason?: string;
+  exceptionOpenedAt?: string;
   visitAttempts: VisitAttempt[];
   audit: AuditEvent[];
   evidence?: SiteEvidence[];

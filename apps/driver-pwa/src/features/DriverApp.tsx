@@ -16,6 +16,7 @@ import {
   Upload,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { QrScanner } from "@/features/QrScanner";
 
 type Driver = {
   id: string;
@@ -38,6 +39,12 @@ type Attempt = {
       }[]
     | null;
 };
+type SiteException = {
+  reason: string;
+  status: string;
+  details: Record<string, unknown> | null;
+  created_at: string;
+};
 type Site = {
   id: string;
   site_code: string;
@@ -49,6 +56,7 @@ type Site = {
   city: { name_en: string } | { name_en: string }[] | null;
   category: { name_en: string } | { name_en: string }[] | null;
   visit_attempts: Attempt[] | null;
+  exceptions: SiteException[] | null;
 };
 type Position = { latitude: number; longitude: number; accuracy: number };
 
@@ -94,11 +102,13 @@ export function DriverApp() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [position, setPosition] = useState<Position>();
+  const [qrVerified, setQrVerified] = useState(false);
   const [attemptId, setAttemptId] = useState<string>();
   const [photoOne, setPhotoOne] = useState<File>();
   const [photoTwo, setPhotoTwo] = useState<File>();
   const [notes, setNotes] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [localDemo, setLocalDemo] = useState(false);
   const load = useCallback(async () => {
     setError("");
     try {
@@ -122,7 +132,7 @@ export function DriverApp() {
       const { data: siteRows, error: siteError } = await supabase
         .from("sites")
         .select(
-          "id,site_code,merchant_name,address,status,latitude,longitude,city:cities!sites_city_id_fkey(name_en),category:merchant_categories!sites_category_id_fkey(name_en),visit_attempts(id,status,notes,submitted_at,review_decisions(decision,reason_code,notes,created_at))",
+          "id,site_code,merchant_name,address,status,latitude,longitude,city:cities!sites_city_id_fkey(name_en),category:merchant_categories!sites_category_id_fkey(name_en),visit_attempts(id,status,notes,submitted_at,review_decisions(decision,reason_code,notes,created_at)),exceptions(reason,status,details,created_at)",
         )
         .eq("assigned_driver_id", driverRow.id)
         .order("updated_at", { ascending: false });
@@ -143,25 +153,51 @@ export function DriverApp() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    setLocalDemo(["localhost", "127.0.0.1"].includes(window.location.hostname));
+  }, []);
+  const startVisitAt = async (gps: Position, message: string) => {
+    if (!active) return;
+    setPosition(gps);
+    const { data, error: rpcError } = await supabase.rpc("start_site_visit", {
+      p_site_code: active.site_code,
+      p_latitude: gps.latitude,
+      p_longitude: gps.longitude,
+    });
+    if (rpcError) throw rpcError;
+    setAttemptId(data);
+    setConfirmation(message);
+  };
   const begin = async () => {
     if (!active) return;
     setBusy(true);
     setError("");
     try {
       const gps = await capturePosition();
-      setPosition(gps);
-      const { data, error: rpcError } = await supabase.rpc("start_site_visit", {
-        p_site_code: active.site_code,
-        p_latitude: gps.latitude,
-        p_longitude: gps.longitude,
-      });
-      if (rpcError) throw rpcError;
-      setAttemptId(data);
-      setConfirmation("GPS captured. Add both evidence photos.");
+      await startVisitAt(gps, "GPS captured. Add both evidence photos.");
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Unable to start visit",
       );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const useDemoLocation = async () => {
+    if (!active || !localDemo) return;
+    setBusy(true);
+    setError("");
+    try {
+      await startVisitAt(
+        {
+          latitude: active.latitude,
+          longitude: active.longitude,
+          accuracy: 5,
+        },
+        "Demo location captured at the fictional site coordinates. Add both evidence photos.",
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to start demo visit");
     } finally {
       setBusy(false);
     }
@@ -220,6 +256,10 @@ export function DriverApp() {
   const submit = async () => {
     if (!active || !photoOne || !photoTwo) {
       setError("Capture both evidence photos before submitting.");
+      return;
+    }
+    if (!qrVerified) {
+      setError("Verify the site QR code before submitting.");
       return;
     }
     setBusy(true);
@@ -303,6 +343,13 @@ export function DriverApp() {
         Date.parse(a.submitted_at ?? "1970"),
     )[0];
     const decision = latest?.review_decisions?.[0];
+    const latestException = [...(active.exceptions ?? [])].sort(
+      (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at),
+    )[0];
+    const exceptionReason =
+      typeof latestException?.details?.reason_code === "string"
+        ? latestException.details.reason_code
+        : latestException?.reason;
     return (
       <main>
         <header className="mobile-header">
@@ -312,6 +359,7 @@ export function DriverApp() {
               setActive(undefined);
               setAttemptId(undefined);
               setPosition(undefined);
+              setQrVerified(false);
               setPhotoOne(undefined);
               setPhotoTwo(undefined);
               setError("");
@@ -354,6 +402,7 @@ export function DriverApp() {
                 <p>
                   {decision?.notes ||
                     decision?.reason_code ||
+                    exceptionReason ||
                     "Operations requested new evidence."}
                 </p>
               </div>
@@ -362,6 +411,22 @@ export function DriverApp() {
           <div className="workflow-card">
             <div className="step">
               <span>1</span>
+              <div>
+                <b>Verify site QR</b>
+                <small>Confirms you are at the assigned site</small>
+              </div>
+            </div>
+            <QrScanner
+              expectedCode={active.site_code}
+              verified={qrVerified}
+              onVerified={() => {
+                setQrVerified(true);
+                setError("");
+                setConfirmation("Site QR verified. Capture your location next.");
+              }}
+            />
+            <div className="step">
+              <span>2</span>
               <div>
                 <b>Capture location</b>
                 <small>Required at the merchant site</small>
@@ -381,8 +446,13 @@ export function DriverApp() {
                 <span>±{Math.round(position.accuracy)}m accuracy</span>
               </div>
             )}
+            {!position && localDemo && error.includes("Location permission") ? (
+              <button className="demo-location" onClick={useDemoLocation} disabled={busy}>
+                Use fictional demo-site location
+              </button>
+            ) : null}
             <div className="step photos">
-              <span>2</span>
+              <span>3</span>
               <div>
                 <b>Add two photos</b>
                 <small>Poster installation and close-up</small>
@@ -453,7 +523,7 @@ export function DriverApp() {
             <button
               className="submit"
               onClick={submit}
-              disabled={busy || !photoOne || !photoTwo}
+              disabled={busy || !qrVerified || !photoOne || !photoTwo}
             >
               <Upload />
               {busy ? "Submitting…" : "Submit evidence"}
@@ -518,6 +588,7 @@ export function DriverApp() {
                 setActive(site);
                 setError("");
                 setConfirmation("");
+                setQrVerified(false);
                 const inProgress = site.visit_attempts?.find(
                   (attempt) => attempt.status === "in_progress",
                 );

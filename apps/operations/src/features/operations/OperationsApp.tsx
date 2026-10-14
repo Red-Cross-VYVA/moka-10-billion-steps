@@ -84,8 +84,8 @@ import {
   createLiveSite,
   decideLiveReview,
   loadLiveOperations,
+  resolveLiveException,
   updateLiveDriver,
-  updateLiveSiteStatus,
 } from "@/data/live-operations";
 
 const MapView = dynamic(() => import("./MapView").then((m) => m.MapView), {
@@ -241,7 +241,14 @@ export function OperationsApp() {
   };
   const mutateSite = async (siteId: string, to: SiteStatus, detail: string) => {
     if (liveMode && supabase) {
-      await updateLiveSiteStatus(supabase, siteId, to);
+      if (
+        to !== "Assigned" &&
+        to !== "Verified" &&
+        to !== "Closed / Cancelled"
+      ) {
+        throw new Error("This hosted exception action is not supported.");
+      }
+      await resolveLiveException(supabase, siteId, to, detail);
       await refreshLive();
       return;
     }
@@ -350,7 +357,15 @@ export function OperationsApp() {
                 <span>{t(language, key)}</span>
                 {key === "reviews" && <em>{kpis(sites).underReview}</em>}
                 {key === "exceptions" && (
-                  <em className="danger">{kpis(sites).flagged}</em>
+                  <em className="danger">
+                    {
+                      sites.filter((site) =>
+                        ["Flagged / Exception", "Revisit Required"].includes(
+                          site.status,
+                        ),
+                      ).length
+                    }
+                  </em>
                 )}
               </button>
             ))}
@@ -2144,7 +2159,14 @@ function Exceptions({
       s.status === "Flagged / Exception" || s.status === "Revisit Required",
   );
   const items = source
-    .map((s, i) => ({ site: s, reason: reasons[i % reasons.length] }))
+    .map((s, i) => ({
+      site: s,
+      reason:
+        s.exceptionReason ??
+        (s.status === "Revisit Required"
+          ? "Rejected evidence"
+          : reasons[i % reasons.length]),
+    }))
     .filter(
       (x) =>
         (!reason || x.reason === reason) &&
@@ -2213,7 +2235,16 @@ function Exceptions({
                   <td>
                     <Badge status={s.status} />
                   </td>
-                  <td>{2 + (i % 9)}h ago</td>
+                  <td>
+                    {s.exceptionOpenedAt
+                      ? new Date(s.exceptionOpenedAt).toLocaleString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : `${2 + (i % 9)}h ago`}
+                  </td>
                   <td>
                     <div className="row-actions">
                       <button onClick={() => onSelect(s)}>Review</button>

@@ -28,21 +28,20 @@ If custom SMTP or a plan that permits template editing is approved later:
 6. Send a single invitation only after the Invite user template visibly shows the branded source.
 7. Confirm receipt in the recipient mailbox and complete the link flow in a browser. A successful send response alone is not proof of delivery.
 
-## URL configuration observed
+## Hosted URL configuration applied
 
-- Hosted Site URL: `http://localhost:3000`
-- Hosted redirect allow list: `http://localhost:3001/**`
+- Hosted Site URL: `https://10-billion-steps.vercel.app`
+- Hosted redirect allow list:
+  - `http://localhost:3000/**`
+  - `http://127.0.0.1:3000/**`
+  - `http://localhost:3001/**`
+  - `http://127.0.0.1:3001/**`
+  - `https://10-billion-steps.vercel.app/**`
 - Existing Vercel production domain: `https://10-billion-steps.vercel.app`
 - Local Operations Dashboard: `http://localhost:3000`
 - Local Driver PWA: `http://localhost:3001`
 
-The production Vercel domain is not currently present in the hosted redirect allow list. Before using hosted email links against the Vercel deployment, set the Site URL to `https://10-billion-steps.vercel.app` and retain both local applications as explicit redirect URLs:
-
-- `http://localhost:3000/**`
-- `http://localhost:3001/**`
-- `https://10-billion-steps.vercel.app/**`
-
-This URL change was not applied because no branded hosted template could be applied or tested under the approved built-in-mail constraint.
+The deployed `/auth/callback` and `/auth/confirm` routes were verified before this change. Default Supabase email templates and the built-in delivery service remain unchanged.
 
 ## Built-in email service restrictions
 

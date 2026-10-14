@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getSafeNextPath } from "@/lib/supabase/config";
@@ -69,6 +70,9 @@ function LoginForm() {
               onChange={(event) => setPassword(event.target.value)}
             />
           </label>
+          <Link className="auth-link auth-link-right" href="/forgot-password">
+            Forgot password?
+          </Link>
           {error ? (
             <p className="auth-error" role="alert">
               {error}

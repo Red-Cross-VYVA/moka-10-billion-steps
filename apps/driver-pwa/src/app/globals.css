@@ -146,6 +146,27 @@ button {
   top: 0;
   z-index: 4;
 }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.language-toggle {
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--navy);
+  border-radius: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  font-weight: 800;
+}
+[dir="rtl"] .assignment-list > button {
+  text-align: right;
+}
+[dir="rtl"] .assignment-list > button > svg,
+[dir="rtl"] .mobile-header .icon svg {
+  transform: rotate(180deg);
+}
 .icon {
   border: 1px solid var(--line);
   background: white;

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { QrScanner } from "@/features/QrScanner";
+import { driverCopy, type DriverLanguage } from "@/features/i18n";
 
 type Driver = {
   id: string;
@@ -60,14 +61,14 @@ type Site = {
 };
 type Position = { latitude: number; longitude: number; accuracy: number };
 
-const labels: Record<string, string> = {
-  assigned: "Assigned",
-  in_progress: "In progress",
-  under_review: "Under review",
-  verified: "Verified",
-  revisit_required: "Revisit required",
-  flagged_exception: "Exception",
-};
+const statusKeys = {
+  assigned: "assigned",
+  in_progress: "inProgress",
+  under_review: "underReview",
+  verified: "verified",
+  revisit_required: "revisitRequired",
+  flagged_exception: "exception",
+} as const;
 const relationName = (
   value: { name_en: string } | { name_en: string }[] | null,
 ) => (Array.isArray(value) ? value[0]?.name_en : value?.name_en);
@@ -84,10 +85,17 @@ function capturePosition() {
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
         }),
-      () =>
-        reject(
-          new Error("Location permission is required to submit evidence."),
-        ),
+      (locationError) => {
+        if (locationError.code === locationError.PERMISSION_DENIED) {
+          reject(new Error("Location access was denied. Allow location for this site in browser settings, then try again."));
+          return;
+        }
+        if (locationError.code === locationError.TIMEOUT) {
+          reject(new Error("GPS timed out. Move to an open area and try again."));
+          return;
+        }
+        reject(new Error("A reliable GPS position could not be obtained. Check location services and try again."));
+      },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   });
@@ -109,6 +117,12 @@ export function DriverApp() {
   const [notes, setNotes] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [localDemo, setLocalDemo] = useState(false);
+  const [language, setLanguage] = useState<DriverLanguage>("en");
+  const tr = (key: Parameters<typeof driverCopy>[1]) => driverCopy(language, key);
+  const statusLabel = (status: string) => {
+    const key = statusKeys[status as keyof typeof statusKeys];
+    return key ? tr(key) : status;
+  };
   const load = useCallback(async () => {
     setError("");
     try {
@@ -155,7 +169,14 @@ export function DriverApp() {
   }, [load]);
   useEffect(() => {
     setLocalDemo(["localhost", "127.0.0.1"].includes(window.location.hostname));
+    const saved = window.localStorage.getItem("driver-language");
+    if (saved === "ar") setLanguage("ar");
   }, []);
+  const toggleLanguage = () => {
+    const next = language === "en" ? "ar" : "en";
+    setLanguage(next);
+    window.localStorage.setItem("driver-language", next);
+  };
   const startVisitAt = async (gps: Position, message: string) => {
     if (!active) return;
     setPosition(gps);
@@ -333,7 +354,7 @@ export function DriverApp() {
     return (
       <main className="loading">
         <LoaderCircle className="spin" />
-        <b>Loading assignments</b>
+        <b>{tr("loading")}</b>
       </main>
     );
   if (active) {
@@ -351,7 +372,7 @@ export function DriverApp() {
         ? latestException.details.reason_code
         : latestException?.reason;
     return (
-      <main>
+      <main dir={language === "ar" ? "rtl" : "ltr"} lang={language}>
         <header className="mobile-header">
           <button
             className="icon"
@@ -371,39 +392,39 @@ export function DriverApp() {
           </button>
           <div>
             <b>{active.site_code}</b>
-            <span>{labels[active.status] ?? active.status}</span>
+            <span>{statusLabel(active.status)}</span>
           </div>
         </header>
         <section className="site-detail">
           <div className="detail-hero">
             <span className={`status ${active.status}`}>
-              {labels[active.status] ?? active.status}
+              {statusLabel(active.status)}
             </span>
             <h1>{active.merchant_name}</h1>
             <p>
               <MapPin />
               {active.address ||
                 relationName(active.city) ||
-                "Location details unavailable"}
+                tr("locationUnavailable")}
             </p>
             <a
               href={`https://www.google.com/maps?q=${active.latitude},${active.longitude}`}
               target="_blank"
               rel="noreferrer"
             >
-              <ExternalLink /> Open route in maps
+              <ExternalLink /> {tr("openMaps")}
             </a>
           </div>
           {active.status === "revisit_required" && (
             <div className="revisit">
               <RefreshCw />
               <div>
-                <b>Revisit requested</b>
+                <b>{tr("revisitRequested")}</b>
                 <p>
                   {decision?.notes ||
                     decision?.reason_code ||
                     exceptionReason ||
-                    "Operations requested new evidence."}
+                    tr("revisitFallback")}
                 </p>
               </div>
             </div>
@@ -412,8 +433,8 @@ export function DriverApp() {
             <div className="step">
               <span>1</span>
               <div>
-                <b>Verify site QR</b>
-                <small>Confirms you are at the assigned site</small>
+                <b>{tr("verifyQr")}</b>
+                <small>{tr("verifyQrHint")}</small>
               </div>
             </div>
             <QrScanner
@@ -424,38 +445,40 @@ export function DriverApp() {
                 setError("");
                 setConfirmation("Site QR verified. Capture your location next.");
               }}
+              allowManualFallback={localDemo}
+              language={language}
             />
             <div className="step">
               <span>2</span>
               <div>
-                <b>Capture location</b>
-                <small>Required at the merchant site</small>
+                <b>{tr("captureLocation")}</b>
+                <small>{tr("locationRequired")}</small>
               </div>
               {position ? (
                 <CheckCircle2 className="ok" />
               ) : (
                 <button onClick={begin} disabled={busy}>
                   <LocateFixed />
-                  {busy ? "Capturing…" : "Capture GPS"}
+                  {busy ? tr("capturing") : tr("captureGps")}
                 </button>
               )}
             </div>
             {position && (
               <div className="gps">
-                <b>GPS captured</b>
-                <span>±{Math.round(position.accuracy)}m accuracy</span>
+                <b>{tr("gpsCaptured")}</b>
+                <span>±{Math.round(position.accuracy)}m {tr("accuracy")}</span>
               </div>
             )}
-            {!position && localDemo && error.includes("Location permission") ? (
+            {!position && localDemo && error ? (
               <button className="demo-location" onClick={useDemoLocation} disabled={busy}>
-                Use fictional demo-site location
+                {tr("demoLocation")}
               </button>
             ) : null}
             <div className="step photos">
               <span>3</span>
               <div>
-                <b>Add two photos</b>
-                <small>Poster installation and close-up</small>
+                <b>{tr("addPhotos")}</b>
+                <small>{tr("photosHint")}</small>
               </div>
             </div>
             <div className="photo-inputs">
@@ -463,13 +486,13 @@ export function DriverApp() {
                 <Camera />
                 {photoOne ? (
                   <>
-                    <b>Installation photo ready</b>
+                    <b>{tr("installationReady")}</b>
                     <small>{photoOne.name}</small>
                   </>
                 ) : (
                   <>
-                    <b>Installation photo</b>
-                    <small>Use camera</small>
+                    <b>{tr("installationPhoto")}</b>
+                    <small>{tr("useCamera")}</small>
                   </>
                 )}
                 <input
@@ -483,13 +506,13 @@ export function DriverApp() {
                 <Camera />
                 {photoTwo ? (
                   <>
-                    <b>Close-up photo ready</b>
+                    <b>{tr("closeupReady")}</b>
                     <small>{photoTwo.name}</small>
                   </>
                 ) : (
                   <>
-                    <b>Close-up evidence</b>
-                    <small>Use camera</small>
+                    <b>{tr("closeupEvidence")}</b>
+                    <small>{tr("useCamera")}</small>
                   </>
                 )}
                 <input
@@ -501,11 +524,11 @@ export function DriverApp() {
               </label>
             </div>
             <label className="notes">
-              Field notes
+              {tr("fieldNotes")}
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                placeholder="Optional notes, or explain why installation was not possible"
+                placeholder={tr("notesPlaceholder")}
               />
             </label>
             {error ? (
@@ -526,11 +549,11 @@ export function DriverApp() {
               disabled={busy || !qrVerified || !photoOne || !photoTwo}
             >
               <Upload />
-              {busy ? "Submitting…" : "Submit evidence"}
+              {busy ? tr("submitting") : tr("submit")}
             </button>
             <button className="unable" onClick={reportIssue} disabled={busy}>
               <AlertTriangle />
-              Unable to install
+              {tr("unable")}
             </button>
           </div>
         </section>
@@ -538,24 +561,29 @@ export function DriverApp() {
     );
   }
   return (
-    <main>
+    <main dir={language === "ar" ? "rtl" : "ltr"} lang={language}>
       <header className="app-header">
         <div className="brand">
           <span>DMC</span>
           <b>10 Billion Steps</b>
-          <small>Driver field app</small>
+          <small>{tr("driverApp")}</small>
         </div>
+        <div className="header-actions">
+          <button className="language-toggle" type="button" onClick={toggleLanguage}>
+            {language === "en" ? "العربية" : "EN"}
+          </button>
         <form action="/auth/signout" method="post">
           <button className="icon" aria-label="Sign out">
             <LogOut />
           </button>
         </form>
+        </div>
       </header>
       <section className="home">
-        <p className="kicker">Today’s fieldwork</p>
-        <h1>Hello, {driver?.full_name.split(" ")[0]}</h1>
+        <p className="kicker">{tr("todaysFieldwork")}</p>
+        <h1>{tr("hello")}, {driver?.full_name.split(" ")[0]}</h1>
         <p>
-          {pending.length} active assignment{pending.length === 1 ? "" : "s"} ·{" "}
+          {pending.length} {tr("activeAssignments")} ·{" "}
           {relationName(driver?.region ?? null)}
         </p>
         {error ? (
@@ -567,17 +595,17 @@ export function DriverApp() {
         <div className="summary">
           <div>
             <b>{pending.length}</b>
-            <span>Active</span>
+            <span>{tr("active")}</span>
           </div>
           <div>
             <b>
               {sites.filter((site) => site.status === "under_review").length}
             </b>
-            <span>In review</span>
+            <span>{tr("inReview")}</span>
           </div>
           <div>
             <b>{sites.filter((site) => site.status === "verified").length}</b>
-            <span>Verified</span>
+            <span>{tr("verified")}</span>
           </div>
         </div>
         <div className="assignment-list">
@@ -604,7 +632,7 @@ export function DriverApp() {
                   {site.site_code} · {relationName(site.city)}
                 </small>
                 <em className={site.status}>
-                  {labels[site.status] ?? site.status}
+                  {statusLabel(site.status)}
                 </em>
               </span>
               <ChevronRight />
@@ -613,14 +641,14 @@ export function DriverApp() {
           {pending.length === 0 ? (
             <div className="empty">
               <CheckCircle2 />
-              <h2>All caught up</h2>
-              <p>No active sites are assigned to you.</p>
+              <h2>{tr("allCaughtUp")}</h2>
+              <p>{tr("noSites")}</p>
             </div>
           ) : null}
         </div>
         <button className="refresh" onClick={() => void load()}>
           <RefreshCw />
-          Refresh assignments
+          {tr("refresh")}
         </button>
       </section>
     </main>

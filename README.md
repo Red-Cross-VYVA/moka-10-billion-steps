@@ -1,6 +1,6 @@
 # Moka Digiteck — 10 Billion Steps
 
-Phase 1 UI foundation for the 10,000 Sites Activation ecosystem.
+Authenticated demonstration foundation for the 10,000 Sites Activation ecosystem.
 
 ## Workspace
 
@@ -22,7 +22,7 @@ The Operations Dashboard runs at `http://localhost:3000`. Start the Driver PWA s
 ```bash
 npm run typecheck
 npm test
-npm run build
+npm run build:all
 ```
 
 The dashboard uses 10,000 deterministic fictional Saudi site fixtures. Changes are simulated in the browser and saved to local storage. The Phase 1 workflows include validated site creation, client-side CSV field mapping and row validation, regional assignment/reassignment, evidence decisions with preserved attempts, derived driver workloads, reconciled KPIs, and an Arabic RTL mode for core operations screens.
@@ -41,6 +41,8 @@ Set `NEXT_PUBLIC_MAP_STYLE_URL` to replace the default MapLibre-compatible tile 
 
 Phase 1 did not include application authentication. Until Phase 2 authentication enforcement is enabled, use localhost or a hosting-provider preview protected by account access. Do not publish an unprotected public preview containing stakeholder material.
 
-Phase 1 intentionally excludes payments, messaging delivery, AI vision, production cloud deployment, the Driver PWA, and Scavenger Hunt implementation. It is a functional UI prototype, not a production-ready system.
+Payments, messaging delivery, AI vision, production cloud deployment, and the Scavenger Hunt remain out of scope. The authenticated Operations and Driver workflows are a demonstration, not a production-ready system.
+
+The Driver PWA includes install metadata, camera-based QR and evidence capture, GPS capture, and English/Arabic layouts. Localhost may expose clearly labelled fictional QR/GPS fallbacks for development; hosted builds do not expose those controls. See `docs/staging-mobile-checklist.md` for the physical-device test procedure.
 
 Phase 2 Supabase infrastructure is documented in `docs/phase2-supabase.md`. Authentication enforcement and the production data switch remain opt-in until the initial administrator is provisioned.

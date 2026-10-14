@@ -3,31 +3,30 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, QrCode, ScanLine, X } from "lucide-react";
 import { extractSiteCode } from "./qr";
-
-type Barcode = { rawValue: string };
-type Detector = { detect(source: ImageBitmapSource): Promise<Barcode[]> };
-type DetectorConstructor = new (options: { formats: string[] }) => Detector;
+import { driverCopy, type DriverLanguage } from "./i18n";
 
 export function QrScanner({
   expectedCode,
   verified,
   onVerified,
+  allowManualFallback = false,
+  language = "en",
 }: {
   expectedCode: string;
   verified: boolean;
   onVerified: () => void;
+  allowManualFallback?: boolean;
+  language?: DriverLanguage;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const frameRef = useRef<number | null>(null);
+  const controlsRef = useRef<{ stop(): void } | null>(null);
   const [open, setOpen] = useState(false);
   const [manualCode, setManualCode] = useState("");
   const [error, setError] = useState("");
 
   const stop = () => {
-    if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
+    controlsRef.current?.stop();
+    controlsRef.current = null;
     setOpen(false);
   };
 
@@ -35,7 +34,7 @@ export function QrScanner({
 
   const verify = (value: string) => {
     if (extractSiteCode(value) !== expectedCode.toUpperCase()) {
-      setError(`This code does not match ${expectedCode}.`);
+      setError(`${driverCopy(language, "codeMismatch")} ${expectedCode}.`);
       return false;
     }
     setError("");
@@ -46,40 +45,24 @@ export function QrScanner({
 
   const start = async () => {
     setError("");
-    const DetectorApi = (
-      window as typeof window & { BarcodeDetector?: DetectorConstructor }
-    ).BarcodeDetector;
-    if (!DetectorApi) {
-      setOpen(true);
-      setError("Live QR scanning is unavailable in this browser. Enter the site code below.");
-      return;
-    }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
-      });
-      streamRef.current = stream;
       setOpen(true);
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play();
-        }
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      if (!videoRef.current) throw new Error("camera_unavailable");
+      const { BrowserQRCodeReader } = await import("@zxing/browser");
+      const reader = new BrowserQRCodeReader(undefined, {
+        delayBetweenScanAttempts: 150,
       });
-      const detector = new DetectorApi({ formats: ["qr_code"] });
-      const scan = async () => {
-        if (!videoRef.current || !streamRef.current) return;
-        try {
-          const codes = await detector.detect(videoRef.current);
-          if (codes[0]?.rawValue && verify(codes[0].rawValue)) return;
-        } catch {}
-        frameRef.current = requestAnimationFrame(scan);
-      };
-      frameRef.current = requestAnimationFrame(scan);
+      controlsRef.current = await reader.decodeFromConstraints(
+        { video: { facingMode: { ideal: "environment" } }, audio: false },
+        videoRef.current,
+        (result) => {
+          if (result?.getText()) verify(result.getText());
+        },
+      );
     } catch {
       setOpen(true);
-      setError("Camera permission is required for live scanning. Enter the site code below instead.");
+      setError(driverCopy(language, "cameraRequired"));
     }
   };
 
@@ -87,7 +70,7 @@ export function QrScanner({
     return (
       <div className="qr-verified">
         <CheckCircle2 />
-        <span><b>Site QR verified</b><small>{expectedCode}</small></span>
+        <span><b>{driverCopy(language, "siteQrVerified")}</b><small>{expectedCode}</small></span>
       </div>
     );
   }
@@ -95,23 +78,23 @@ export function QrScanner({
   return (
     <div className="qr-scanner">
       <button className="qr-start" type="button" onClick={() => void start()}>
-        <ScanLine /> Scan site QR
+        <ScanLine /> {driverCopy(language, "scanQr")}
       </button>
       {open ? (
         <div className="qr-panel">
           <div className="qr-panel-head">
             <span><QrCode /> Verify {expectedCode}</span>
-            <button type="button" onClick={stop} aria-label="Close QR scanner"><X /></button>
+            <button type="button" onClick={stop} aria-label={driverCopy(language, "closeScanner")}><X /></button>
           </div>
-          <video ref={videoRef} muted playsInline aria-label="QR scanner camera preview" />
-          {error ? <p className="qr-error">{error}</p> : <p>Point the camera at the site QR code.</p>}
-          <form
+          <video ref={videoRef} muted playsInline aria-label={driverCopy(language, "scanQr")} />
+          {error ? <p className="qr-error">{error}</p> : <p>{driverCopy(language, "pointCamera")}</p>}
+          {allowManualFallback ? <form
             onSubmit={(event) => {
               event.preventDefault();
               verify(manualCode);
             }}
           >
-            <label htmlFor="manual-site-code">Manual site code</label>
+            <label htmlFor="manual-site-code">{driverCopy(language, "manualCode")}</label>
             <div>
               <input
                 id="manual-site-code"
@@ -120,9 +103,9 @@ export function QrScanner({
                 placeholder={expectedCode}
                 autoCapitalize="characters"
               />
-              <button type="submit" disabled={!manualCode.trim()}>Verify</button>
+              <button type="submit" disabled={!manualCode.trim()}>{driverCopy(language, "verify")}</button>
             </div>
-          </form>
+          </form> : null}
         </div>
       ) : null}
     </div>

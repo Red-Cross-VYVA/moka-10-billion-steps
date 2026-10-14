@@ -490,6 +490,7 @@ export function OperationsApp() {
             {!liveLoading && page === "reviews" && (
               <Reviews
                 sites={sites}
+                drivers={drivers}
                 action={async (id, to, detail) => {
                   try {
                     await reviewSite(id, to, detail);
@@ -1941,10 +1942,12 @@ const declineReasons = [
 ];
 function Reviews({
   sites,
+  drivers,
   action,
   onSelect,
 }: {
   sites: Site[];
+  drivers: Driver[];
   action: (
     id: string,
     to: "Verified" | "Revisit Required" | "Flagged / Exception",
@@ -1952,25 +1955,102 @@ function Reviews({
   ) => void | Promise<void>;
   onSelect: (s: Site) => void;
 }) {
-  const queue = sites.filter((s) => s.status === "Under Review");
+  const [query, setQuery] = useState("");
+  const [region, setRegion] = useState("");
+  const [driverId, setDriverId] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const allReviews = sites.filter((s) => s.status === "Under Review");
+  const reviewRegions = [...new Set(allReviews.map((s) => s.region))].sort();
+  const reviewDrivers = drivers.filter((driver) =>
+    allReviews.some((site) => site.driverId === driver.id),
+  );
+  const queue = allReviews.filter((site) => {
+    const submittedAt = site.visitAttempts[0]?.submittedAt ?? site.updatedAt;
+    const submittedDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Riyadh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(submittedAt));
+    const needle = query.trim().toLowerCase();
+    return (
+      (!needle ||
+        site.id.toLowerCase().includes(needle) ||
+        site.merchant.toLowerCase().includes(needle)) &&
+      (!region || site.region === region) &&
+      (!driverId || site.driverId === driverId) &&
+      (!dateFrom || submittedDate >= dateFrom) &&
+      (!dateTo || submittedDate <= dateTo)
+    );
+  });
   const [active, setActive] = useState(queue[0]);
   const [reason, setReason] = useState(declineReasons[0]);
+  const clearFilters = () => {
+    setQuery("");
+    setRegion("");
+    setDriverId("");
+    setDateFrom("");
+    setDateTo("");
+  };
+  const filters = (
+    <div className="panel review-filters" aria-label="Review queue filters">
+      <label className="search">
+        <Search />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search site or merchant"
+        />
+      </label>
+      <select value={region} onChange={(event) => setRegion(event.target.value)}>
+        <option value="">All regions</option>
+        {reviewRegions.map((item) => <option key={item}>{item}</option>)}
+      </select>
+      <select value={driverId} onChange={(event) => setDriverId(event.target.value)}>
+        <option value="">All drivers</option>
+        {reviewDrivers.map((driver) => (
+          <option key={driver.id} value={driver.id}>{driver.name}</option>
+        ))}
+      </select>
+      <label className="date-filter">
+        <span>From</span>
+        <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+      </label>
+      <label className="date-filter">
+        <span>To</span>
+        <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+      </label>
+      <span className="result-count">{fmt.format(queue.length)} results</span>
+      <button className="button secondary" onClick={clearFilters} disabled={!query && !region && !driverId && !dateFrom && !dateTo}>
+        <X /> Clear
+      </button>
+    </div>
+  );
   useEffect(() => {
-    if (active && !queue.some((s) => s.id === active.id)) setActive(queue[0]);
+    if (!active || !queue.some((s) => s.id === active.id)) setActive(queue[0]);
   }, [queue, active]);
   if (!active)
     return (
-      <Empty
-        title="Review queue cleared"
-        text="There is no submitted evidence awaiting a decision."
-      />
+      <>
+        <PageIntro
+          title="Review queue"
+          text={`${fmt.format(queue.length)} of ${fmt.format(allReviews.length)} submissions shown.`}
+        />
+        {filters}
+        <Empty
+          title={allReviews.length ? "No matching submissions" : "Review queue cleared"}
+          text={allReviews.length ? "Adjust or clear the filters to see more submissions." : "There is no submitted evidence awaiting a decision."}
+        />
+      </>
     );
   return (
     <>
       <PageIntro
         title="Review queue"
-        text={`${fmt.format(queue.length)} evidence submissions await an operations decision.`}
+        text={`${fmt.format(queue.length)} of ${fmt.format(allReviews.length)} submissions shown.`}
       />
+      {filters}
       <div className="review-layout">
         <div className="panel review-list">
           {queue.slice(0, 25).map((s) => (

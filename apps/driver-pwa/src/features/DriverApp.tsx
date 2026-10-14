@@ -68,6 +68,25 @@ type Site = {
 };
 type Position = { latitude: number; longitude: number; accuracy: number };
 
+const errorMessage = (cause: unknown, fallback: string) => {
+  if (cause instanceof Error && cause.message) return cause.message;
+  if (cause && typeof cause === "object" && "message" in cause) {
+    const message = (cause as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  return fallback;
+};
+
+const isExistingStorageObject = (cause: unknown) => {
+  if (!cause || typeof cause !== "object") return false;
+  const error = cause as { statusCode?: string | number; message?: string };
+  return (
+    String(error.statusCode) === "409" ||
+    error.message?.toLowerCase().includes("already exists") === true ||
+    error.message?.toLowerCase().includes("duplicate") === true
+  );
+};
+
 const statusKeys = {
   assigned: "assigned",
   in_progress: "inProgress",
@@ -354,8 +373,13 @@ export function DriverApp() {
         metadata: { ...sharedMetadata, variant: "stamped" },
       }),
     ]);
-    if (originalUpload.error) throw originalUpload.error;
-    if (stampedUpload.error) throw stampedUpload.error;
+    if (originalUpload.error && !isExistingStorageObject(originalUpload.error)) {
+      throw originalUpload.error;
+    }
+    if (stampedUpload.error && !isExistingStorageObject(stampedUpload.error)) {
+      throw stampedUpload.error;
+    }
+    const originalRecordId = crypto.randomUUID();
     const { error: metadataError } = await supabase
       .from("evidence_files")
       .insert([
@@ -373,6 +397,7 @@ export function DriverApp() {
           uploaded_by: userId,
         },
         {
+          id: originalRecordId,
           organization_id: driver.organization_id,
           site_id: active.id,
           attempt_id: id,
@@ -433,9 +458,7 @@ export function DriverApp() {
       setNotes("");
       await load();
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Evidence submission failed",
-      );
+      setError(errorMessage(cause, "Evidence submission failed"));
     } finally {
       setBusy(false);
     }

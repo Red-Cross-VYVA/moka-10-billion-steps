@@ -55,10 +55,8 @@ describe("driver registration", () => {
       regionId: "Choose an available region.",
     });
   });
-  it("accepts empty optional contacts but rejects malformed email", () => {
-    expect(
-      validateDriver({ ...draft, mobile: "", email: "" }, regions),
-    ).toEqual({});
+  it("accepts empty optional email but rejects malformed email", () => {
+    expect(validateDriver({ ...draft, email: "" }, regions)).toEqual({});
     expect(
       validateDriver({ ...draft, email: "wrong@" }, regions).email,
     ).toBeDefined();
@@ -110,13 +108,24 @@ describe("driver registration", () => {
       expected,
     );
   });
-  it("stores omitted contact fields as null", async () => {
+  it.each(["", " ", "\t\n"])(
+    "rejects blank mobile %j before writing",
+    async (mobile) => {
+      const { client, insert } = clientFor({ data: persisted, error: null });
+      expect(validateDriver({ ...draft, mobile }, regions).mobile).toBe(
+        "Mobile number is required.",
+      );
+      await expect(
+        registerLiveDriver(client, { ...draft, mobile }, regions),
+      ).rejects.toThrow("Mobile number is required.");
+      expect(insert).not.toHaveBeenCalled();
+    },
+  );
+  it("stores omitted email as null and preserves required mobile", async () => {
     const { client, insert } = clientFor({ data: persisted, error: null });
-    await registerLiveDriver(
-      client,
-      { ...draft, mobile: " ", email: " " },
-      regions,
+    await registerLiveDriver(client, { ...draft, email: " " }, regions);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ mobile: "+966 50 111 2222", email: null }),
     );
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ mobile: null, email: null }));
   });
 });

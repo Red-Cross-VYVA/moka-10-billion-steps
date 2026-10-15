@@ -29,7 +29,8 @@ export function validateDriver(
     errors.name = "Use at most 200 characters.";
   if (!regions.some((region) => region.id === draft.regionId))
     errors.regionId = "Choose an available region.";
-  if (draft.mobile.trim().length > 60)
+  if (!draft.mobile.trim()) errors.mobile = "Mobile number is required.";
+  else if (draft.mobile.trim().length > 60)
     errors.mobile = "Use at most 60 characters.";
   if (
     draft.email.trim() &&
@@ -99,7 +100,7 @@ export async function registerLiveDriver(
       region_id: region.id,
       driver_code: draft.code.trim(),
       full_name: draft.name.trim(),
-      mobile: draft.mobile.trim() || null,
+      mobile: draft.mobile.trim(),
       email: draft.email.trim() || null,
       active: true,
       available: true,

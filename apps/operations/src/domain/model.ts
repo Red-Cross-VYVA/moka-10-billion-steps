@@ -80,6 +80,7 @@ export interface Driver {
   active: boolean;
   available: boolean;
   code?: string;
+  signInLinked?: boolean;
 }
 export interface Notification {
   id: string;

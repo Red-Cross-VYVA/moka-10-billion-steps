@@ -89,6 +89,7 @@ import dynamic from "next/dynamic";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseAuthRequired } from "@/lib/supabase/config";
 import { ImportRequirements } from "./ImportRequirements";
+import { DriverRegistration } from "./DriverRegistration";
 import {
   assignLiveSites,
   createLiveSite,
@@ -1750,7 +1751,7 @@ function DriversPage({
   onToggle: (id: string, key: "active" | "available") => Promise<void>;
   liveMode: boolean;
 }) {
-  const [modal, setModal] = useState(false);
+  const language = useContext(LanguageContext);
   const toggle = async (id: string, key: "active" | "available") => {
     try {
       await onToggle(id, key);
@@ -1776,13 +1777,15 @@ function DriversPage({
             >
               <Upload /> Import CSV
             </button>
-            <button
-              className="button primary"
-              disabled={liveMode}
-              onClick={() => setModal(true)}
-            >
-              <Plus /> Add driver
-            </button>
+            <DriverRegistration
+              liveMode={liveMode}
+              language={language}
+              existingCodes={drivers.map((driver) => driver.code ?? driver.id)}
+              onCreated={(driver) => {
+                setDrivers((current) => [...current, driver]);
+                notify("Driver profile registered");
+              }}
+            />
           </>
         }
       />
@@ -1827,19 +1830,28 @@ function DriversPage({
                 <span>{d.mobile}</span>
                 <span>{d.email}</span>
               </div>
+              {liveMode && d.signInLinked === false && (
+                <p className="driver-signin-note">
+                  Sign-in not linked · A separate invited account is required.
+                </p>
+              )}
               <div className="driver-actions">
                 <button onClick={() => void toggle(d.id, "available")}>
                   Override availability
                 </button>
                 <button
-                  onClick={() => {
-                    navigator.clipboard?.writeText(
-                      `${location.origin.replace("3000", "3001")}/login`,
-                    );
-                    notify("Demo activation link copied");
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        "https://drivers.10billionsteps.site/login",
+                      );
+                      notify("Driver app link copied");
+                    } catch {
+                      notify("Could not copy the link. Open https://drivers.10billionsteps.site/login");
+                    }
                   }}
                 >
-                  Copy invite link
+                  Copy driver app link
                 </button>
                 <button onClick={() => void toggle(d.id, "active")}>
                   {d.active ? "Deactivate" : "Activate"}
@@ -1849,72 +1861,7 @@ function DriversPage({
           );
         })}
       </div>
-      {modal && (
-        <Modal
-          title="Register driver"
-          subtitle="Creates a fictional driver in this browser only."
-          close={() => setModal(false)}
-        >
-          <div className="form-grid">
-            <label>
-              Full name
-              <input id="new-driver-name" placeholder="Driver name" />
-            </label>
-            <label>
-              Region
-              <select id="new-driver-region">
-                {regions.map((r) => (
-                  <option key={r}>{r}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Mobile
-              <input placeholder="+966 5X XXX XXXX" />
-            </label>
-            <label>
-              Email
-              <input placeholder="name@example.com" />
-            </label>
-            <div className="modal-actions span2">
-              <button
-                className="button secondary"
-                onClick={() => setModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="button primary"
-                onClick={() => {
-                  const input = document.getElementById(
-                    "new-driver-name",
-                  ) as HTMLInputElement;
-                  const region = document.getElementById(
-                    "new-driver-region",
-                  ) as HTMLSelectElement;
-                  if (!input.value) return;
-                  setDrivers((a) => [
-                    ...a,
-                    {
-                      id: `DRV-${String(a.length + 1).padStart(3, "0")}`,
-                      name: input.value,
-                      mobile: "+966 50 000 0000",
-                      email: "new.driver@demo.moka.invalid",
-                      region: region.value as Driver["region"],
-                      active: true,
-                      available: true,
-                    },
-                  ]);
-                  setModal(false);
-                  notify("Driver registered and demo invite created");
-                }}
-              >
-                Register driver
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+
     </>
   );
 }

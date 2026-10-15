@@ -139,6 +139,7 @@ export async function loadLiveOperations(client: SupabaseClient) {
   const drivers: Driver[] = (driverRows ?? []).map((row) => ({
     id: row.id,
     code: row.driver_code,
+    signInLinked: Boolean(row.user_id),
     name: row.full_name,
     mobile: row.mobile ?? "—",
     email: row.email ?? "—",

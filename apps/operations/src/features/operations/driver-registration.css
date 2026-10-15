@@ -1,0 +1,155 @@
+.driver-registration {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.driver-registration-note {
+  max-width: 260px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #6c8090;
+}
+.driver-registration-note button {
+  border: 0;
+  background: none;
+  color: #17649c;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.driver-registration-dialog {
+  margin: auto;
+  padding: 0;
+  width: min(560px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  overflow: auto;
+  border: 1px solid #d8e2e9;
+  border-radius: 12px;
+  background: white;
+  color: #20394d;
+  box-shadow: 0 24px 80px #0b263d40;
+  text-align: start;
+}
+.driver-registration-dialog:not([open]) {
+  display: none;
+}
+.driver-registration-dialog::backdrop {
+  background: #102d46a6;
+  backdrop-filter: blur(3px);
+}
+.driver-registration-dialog > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+  border-bottom: 1px solid #e2e8ec;
+}
+.driver-registration-dialog h2 {
+  font-size: 22px;
+  margin: 0 0 8px;
+  color: #173f60;
+}
+.driver-registration-dialog header p {
+  font-size: 12px;
+  color: #6c8090;
+  line-height: 1.6;
+  margin: 0;
+}
+.driver-registration-dialog .icon-btn {
+  flex-shrink: 0;
+}
+.driver-registration-dialog form {
+  padding: 20px 22px;
+}
+.driver-registration-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.driver-registration-fields label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+.driver-registration-fields label > span {
+  color: #b42318;
+}
+.driver-registration-fields input,
+.driver-registration-fields select {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  min-height: 42px;
+  border: 1px solid #cbd8e2;
+  border-radius: 6px;
+  padding: 9px;
+  background: white;
+  color: #20394d;
+  font: inherit;
+}
+.driver-registration-fields [aria-invalid="true"] {
+  border-color: #d92d20;
+}
+.driver-registration-dialog :focus-visible {
+  outline: 3px solid #2687cf;
+  outline-offset: 2px;
+}
+.driver-registration-dialog .field-error {
+  font-size: 11px;
+  line-height: 1.5;
+}
+.driver-registration-access {
+  font-size: 11px;
+  line-height: 1.7;
+  background: #edf3f7;
+  padding: 12px;
+  border: 1px solid #dce6ed;
+  border-radius: 6px;
+  color: #526e83;
+  margin: 18px 0 0;
+}
+.driver-registration-error {
+  font-size: 12px;
+  line-height: 1.6;
+  background: #fff1ed;
+  color: #b42318;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 15px 0 0;
+}
+.driver-registration-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+.driver-registration-dialog .button {
+  min-height: 40px;
+}
+.driver-signin-note {
+  font-size: 10px;
+  color: #8b5a00;
+  margin: 8px 0 0;
+  line-height: 1.5;
+}
+.page-actions:has(.driver-registration) {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .driver-registration-fields {
+    grid-template-columns: 1fr;
+  }
+  .driver-registration-fields .span2 {
+    grid-column: auto;
+  }
+  .driver-registration-dialog > header {
+    padding: 18px;
+  }
+  .driver-registration-dialog form {
+    padding: 18px;
+  }
+  .driver-registration-dialog h2 {
+    font-size: 20px;
+  }
+}

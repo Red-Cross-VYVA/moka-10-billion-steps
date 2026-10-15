@@ -1906,7 +1906,7 @@ function Reviews({
         allResults: "كل نتائج التقييم",
         allStates: "كل حالات المعالجة",
         allCriteria: "كل المعايير",
-        settings: "معايير التقييم",
+        settings: "معايير التقييم بالذكاء الاصطناعي",
         retry: "إعادة التحليل",
         notAssessed: "لم يتم التقييم بعد",
         queued: "تمت إضافة التقييم إلى قائمة الانتظار.",
@@ -1922,7 +1922,7 @@ function Reviews({
         allResults: "All assessment results",
         allStates: "All processing states",
         allCriteria: "All criteria",
-        settings: "Assessment criteria",
+        settings: "AI-powered assessment criteria",
         retry: "Retry analysis",
         notAssessed: "Not assessed yet",
         queued: "Assessment has been queued.",
@@ -2116,7 +2116,7 @@ function Reviews({
         text={`${fmt.format(queue.length)} of ${fmt.format(allReviews.length)} submissions shown.`}
         actions={access.assessmentSettings ? (
           <button className="button secondary" onClick={() => setSettingsOpen(true)}>
-            <Gauge /> {copy.settings}
+            <Sparkles /> {copy.settings}
           </button>
         ) : undefined}
       />

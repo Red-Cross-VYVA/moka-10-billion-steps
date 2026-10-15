@@ -236,7 +236,7 @@ export async function loadLiveOperations(client: SupabaseClient) {
             at: event.created_at,
             actor: event.actor_id ?? "System",
             action: event.action.replaceAll("_", " "),
-            detail: event.detail ?? "Hosted Supabase workflow",
+            detail: event.detail ?? "Operations workflow",
           }),
         ),
       };

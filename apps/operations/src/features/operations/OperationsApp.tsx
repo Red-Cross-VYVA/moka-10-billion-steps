@@ -389,11 +389,11 @@ export function OperationsApp() {
             <div className="system-status">
               <span className="pulse" />
               <div>
-                <b>{liveMode ? "Supabase demo" : "Mock environment"}</b>
+                <b>{liveMode ? "10 Billion Steps" : rtl ? "مساحة تجريبية" : "Demo workspace"}</b>
                 <small>
                   {liveMode
-                    ? "Authenticated hosted data"
-                    : "Local simulation · No live services"}
+                    ? rtl ? "مساحة العمليات" : "Operations workspace"
+                    : rtl ? "بيانات نموذجية" : "Sample data"}
                 </small>
               </div>
             </div>
@@ -919,7 +919,7 @@ function SitesPage({
     }
     setModal(undefined);
     notify(
-      `${drafts.length} CSV records imported${liveMode ? " to Supabase" : " locally"}`,
+      `${drafts.length} CSV records imported${liveMode ? "" : " locally"}`,
     );
   };
   return (

@@ -1,0 +1,191 @@
+.import-guide-dialog {
+  margin: auto;
+  padding: 0;
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  border: 1px solid #d8e2e9;
+  border-radius: 12px;
+  background: #fff;
+  color: #20394d;
+  box-shadow: 0 24px 80px #0b263d40;
+  text-align: start;
+}
+.import-guide-dialog:not([open]) {
+  display: none;
+}
+.import-guide-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.import-guide-dialog::backdrop {
+  background: #102d46a6;
+  backdrop-filter: blur(3px);
+}
+.import-guide-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e2e8ec;
+}
+.import-guide-header span {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: #6b8192;
+}
+.import-guide-header h2 {
+  font-size: 22px;
+  margin: 7px 0;
+  color: #173f60;
+}
+.import-guide-header p {
+  font-size: 12px;
+  color: #6c8090;
+  margin: 0;
+}
+.import-guide-header .icon-btn {
+  flex-shrink: 0;
+}
+.import-guide-body {
+  padding: 18px 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.import-guide-body h3 {
+  font-size: 12px;
+  font-weight: 750;
+  margin: 14px 0 5px;
+}
+.import-guide-table {
+  border: 1px solid #e0e7ed;
+  border-radius: 7px;
+  overflow: auto;
+}
+.import-guide-dialog table {
+  font-size: 11px;
+}
+.import-guide-dialog th {
+  font-size: 9px;
+  padding: 10px;
+  text-align: start;
+}
+.import-guide-dialog td {
+  padding: 10px;
+  white-space: normal;
+  vertical-align: top;
+  line-height: 1.6;
+}
+.import-guide-dialog td:first-child {
+  width: 82px;
+}
+.import-guide-dialog td:nth-child(2) {
+  width: 80px;
+}
+.import-guide-dialog tbody tr {
+  cursor: default;
+}
+.import-guide-dialog td code {
+  font-weight: 700;
+  color: #173f60;
+  background: #edf3f7;
+  padding: 3px 5px;
+  border-radius: 4px;
+}
+.import-guide-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 12px;
+}
+.import-guide-values p {
+  margin: 0;
+  color: #526e83;
+  font-size: 11px;
+}
+.import-guide-body ul {
+  margin: 5px 0;
+  padding-inline-start: 19px;
+}
+.import-guide-body li {
+  margin: 5px 0;
+}
+.import-guide-body pre {
+  overflow: auto;
+  padding: 12px;
+  border-radius: 7px;
+  background: #f0f5f8;
+  border: 1px solid #dce6ed;
+  font-size: 10px;
+  line-height: 1.8;
+  white-space: pre;
+  text-align: left;
+}
+.import-guide-example-note {
+  font-size: 10px;
+  color: #6c8090;
+  margin: 8px 0 0;
+}
+.import-guide-dialog footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid #e2e8ec;
+  background: #fafcfd;
+}
+.import-guide-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+  background: #edf3f7;
+  border: 1px solid #dae5ed;
+  border-radius: 7px;
+}
+.import-guide-banner p {
+  font-size: 11px;
+  color: #496b84;
+  margin: 0;
+}
+.import-guide-banner .button {
+  white-space: nowrap;
+}
+.import-guide-dialog .button {
+  min-height: 38px;
+}
+@media (max-width: 600px) {
+  .import-guide-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+  .import-guide-header {
+    padding: 17px;
+  }
+  .import-guide-header h2 {
+    font-size: 20px;
+  }
+  .import-guide-body {
+    padding: 14px 17px;
+  }
+  .import-guide-values {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .import-guide-dialog footer {
+    padding: 12px 17px;
+    flex-wrap: wrap;
+  }
+  .import-guide-banner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .page-actions:has(.import-guide-dialog) {
+    flex-wrap: wrap;
+  }
+}

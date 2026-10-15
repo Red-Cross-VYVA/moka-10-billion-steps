@@ -88,6 +88,7 @@ import { statusLabel, t, type Language } from "@/i18n/translations";
 import dynamic from "next/dynamic";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseAuthRequired } from "@/lib/supabase/config";
+import { ImportRequirements } from "./ImportRequirements";
 import {
   assignLiveSites,
   createLiveSite,
@@ -935,6 +936,7 @@ function SitesPage({
         }
         actions={
           <>
+            <ImportRequirements language={language} />
             <button
               className="button secondary"
               onClick={() => setModal("import")}
@@ -1293,6 +1295,8 @@ function ImportModal({
   close: () => void;
   done: (drafts: SiteDraft[]) => void;
 }) {
+  const language = useContext(LanguageContext);
+  const rtl = language === "ar";
   const [name, setName] = useState("");
   const [text, setText] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
@@ -1326,6 +1330,10 @@ function ImportModal({
       subtitle="CSV is parsed and validated entirely in this browser."
       close={close}
     >
+      <div className="import-guide-banner">
+        <p>{rtl ? "٧ حقول إلزامية · ملف CSV مع إحداثيات فعلية" : "7 required fields · CSV with actual site coordinates"}</p>
+        <ImportRequirements language={language} />
+      </div>
       <div className="stepper">
         <span className={!text ? "active" : ""}>1 Upload CSV</span>
         <span className={text && !validation ? "active" : ""}>
@@ -1337,7 +1345,7 @@ function ImportModal({
         <label className="dropzone">
           <Upload />
           <b>Choose a CSV file</b>
-          <span>Files remain on this device and are never uploaded.</span>
+          <span>The CSV is checked here. Accepted rows are added when you confirm import.</span>
           <input
             type="file"
             accept=".csv,text/csv"

@@ -120,7 +120,7 @@ export default function SetPasswordPage() {
             {busy ? "Saving…" : "Set password and continue"}
           </button>
         </form>
-        <small>Your invitation is processed securely by Supabase Auth.</small>
+        <small>Your invitation is processed securely.</small>
       </section>
     </main>
   );

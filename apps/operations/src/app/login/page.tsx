@@ -167,7 +167,7 @@ function LoginForm() {
               : "Use a password instead"}
           </button>
         </form>
-        <small>Invite-only · Supabase Auth · No public registration</small>
+        <small>Invite-only · No public registration</small>
       </section>
     </main>
   );

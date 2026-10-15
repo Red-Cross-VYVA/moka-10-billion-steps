@@ -124,7 +124,7 @@ export function DriverRegistration({
             id: `DRV-${crypto.randomUUID()}`,
             code: draft.code.trim(),
             name: draft.name.trim(),
-            mobile: draft.mobile.trim() || "—",
+            mobile: draft.mobile.trim(),
             email: draft.email.trim() || "—",
             region: region.name as Driver["region"],
             active: true,
@@ -289,7 +289,7 @@ export function DriverRegistration({
             </label>
             {(
               [
-                ["mobile", "Mobile (optional)", "الهاتف (اختياري)", 60, "tel"],
+                ["mobile", "Mobile", "الهاتف", 60, "tel"],
                 [
                   "email",
                   "Email (optional)",
@@ -300,10 +300,11 @@ export function DriverRegistration({
               ] as const
             ).map(([key, en, a, max, type]) => (
               <label key={key} htmlFor={`${id}-${key}`}>
-                {tx(en, a)}
+                {tx(en, a)} {key === "mobile" && <span>*</span>}
                 <input
                   id={`${id}-${key}`}
                   type={type}
+                  required={key === "mobile"}
                   autoComplete={type}
                   maxLength={max}
                   disabled={busy}
@@ -321,7 +322,10 @@ export function DriverRegistration({
                 />
                 {errors[key] && (
                   <small id={`${id}-${key}-error`} className="field-error">
-                    {errors[key]}
+                    {key === "mobile" &&
+                    errors[key] === "Mobile number is required."
+                      ? tx("Mobile number is required.", "رقم الهاتف مطلوب.")
+                      : errors[key]}
                   </small>
                 )}
               </label>
